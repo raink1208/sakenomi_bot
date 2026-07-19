@@ -32,7 +32,12 @@ class ParticipantService(
             participantRepository.remove(event.id, member.idLong)
             throw ServiceException("ロール付与に失敗しました。Bot の権限を確認してください")
         }
-        gateway.sendChannelMessage(guild, event.channelId, "${member.effectiveName} が参加しました")
+        val remaining = participantRepository.countByEvent(event.id)
+        gateway.sendChannelMessage(
+            guild,
+            event.channelId,
+            "[参加通知] **${member.effectiveName}** が参加しました(現在の参加者: ${remaining}人)",
+        )
         return event
     }
 
@@ -49,7 +54,12 @@ class ParticipantService(
             throw ServiceException("このイベントに参加していません")
         }
         gateway.removeRole(guild, member, event.roleId)
-        gateway.sendChannelMessage(guild, event.channelId, "${member.effectiveName} が退出しました")
+        val remaining = participantRepository.countByEvent(event.id)
+        gateway.sendChannelMessage(
+            guild,
+            event.channelId,
+            "[退出通知] **${member.effectiveName}** が退出しました(現在の参加者: ${remaining}人)",
+        )
         return event
     }
 
@@ -68,7 +78,12 @@ class ParticipantService(
             participantRepository.remove(event.id, targetUserId)
             throw ServiceException("ロール付与に失敗しました。Bot の権限を確認してください")
         }
-        gateway.sendChannelMessage(guild, event.channelId, "${targetMember.effectiveName} が参加しました")
+        val remaining = participantRepository.countByEvent(event.id)
+        gateway.sendChannelMessage(
+            guild,
+            event.channelId,
+            "[参加通知] **${targetMember.effectiveName}** が参加しました(現在の参加者: ${remaining}人)",
+        )
         auditLogger.participantAdded(guild, event, targetMember, executor)
         return event
     }
@@ -85,7 +100,12 @@ class ParticipantService(
         val targetMember = gateway.findMember(guild.idLong, targetUserId)
         targetMember?.let { gateway.removeRole(guild, it, event.roleId) }
         val displayName = targetMember?.effectiveName ?: "不明なユーザー($targetUserId)"
-        gateway.sendChannelMessage(guild, event.channelId, "$displayName が退出しました")
+        val remaining = participantRepository.countByEvent(event.id)
+        gateway.sendChannelMessage(
+            guild,
+            event.channelId,
+            "[退出通知] **$displayName** が退出しました(現在の参加者: ${remaining}人)",
+        )
         auditLogger.participantRemoved(guild, event, targetUserId, executor)
         return event
     }
