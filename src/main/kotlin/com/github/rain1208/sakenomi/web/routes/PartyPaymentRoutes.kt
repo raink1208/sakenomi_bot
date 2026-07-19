@@ -1,0 +1,75 @@
+package com.github.rain1208.sakenomi.web.routes
+
+import com.github.rain1208.sakenomi.discord.DiscordGateway
+import com.github.rain1208.sakenomi.domain.ServiceException
+import com.github.rain1208.sakenomi.repository.PartyRepository
+import com.github.rain1208.sakenomi.service.EventService
+import com.github.rain1208.sakenomi.service.PartyService
+import com.github.rain1208.sakenomi.service.PaymentService
+import com.github.rain1208.sakenomi.service.SettingsService
+import com.github.rain1208.sakenomi.util.Permissions
+import com.github.rain1208.sakenomi.web.auth.requireGuildContext
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.request.receiveParameters
+import io.ktor.server.response.respondRedirect
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.Route
+import io.ktor.server.routing.post
+import io.ktor.server.routing.route
+
+/** 飲み会・支払ルーティング(Web仕様書.md §5.4) */
+fun Route.partyPaymentRoutes(
+    gateway: DiscordGateway,
+    settingsService: SettingsService,
+    eventService: EventService,
+    partyService: PartyService,
+    paymentService: PaymentService,
+    partyRepository: PartyRepository,
+) {
+    route("/g/{guildId}/parties/{partyId}") {
+        post("/edit") {
+            val ctx = requireGuildContext(gateway, settingsService) ?: return@post
+            val partyId = call.parameters["partyId"]?.toLongOrNull()
+            val party = partyId?.let { partyRepository.findById(it) }
+            val event = party?.let { eventService.findById(it.eventId) }
+            if (party == null || event == null || event.guildId != ctx.guild.idLong) {
+                call.respondText("お店情報が見つかりません", status = HttpStatusCode.NotFound)
+                return@post
+            }
+            if (!Permissions.isOrganizerOrAdmin(ctx.member, ctx.settings, event)) {
+                call.respondText("編集権限がありません", status = HttpStatusCode.Forbidden)
+                return@post
+            }
+            val params = call.receiveParameters()
+            val shopName = params["shopName"]?.trim().orEmpty()
+            if (shopName.isBlank()) throw ServiceException("店名は必須です")
+            val totalAmount = params["totalAmount"]?.takeIf { it.isNotBlank() }?.toLongOrNull()
+            if (totalAmount != null && totalAmount < 0) throw ServiceException("会計金額は 0 以上で指定してください")
+            val note = params["note"]?.trim()?.takeIf { it.isNotBlank() }
+            partyRepository.updateInfo(party.id, shopName, totalAmount, note)
+            call.respondRedirect("/g/${ctx.guild.idLong}/events/${event.id}")
+        }
+
+        post("/payments") {
+            val ctx = requireGuildContext(gateway, settingsService) ?: return@post
+            val partyId = call.parameters["partyId"]?.toLongOrNull()
+            val party = partyId?.let { partyRepository.findById(it) }
+            val event = party?.let { eventService.findById(it.eventId) }
+            if (party == null || event == null || event.guildId != ctx.guild.idLong) {
+                call.respondText("お店情報が見つかりません", status = HttpStatusCode.NotFound)
+                return@post
+            }
+            if (!Permissions.isOrganizerOrAdmin(ctx.member, ctx.settings, event)) {
+                call.respondText("受領記録の登録権限がありません", status = HttpStatusCode.Forbidden)
+                return@post
+            }
+            val params = call.receiveParameters()
+            val payerUserId = params["payerUserId"]?.toLongOrNull()
+                ?: throw ServiceException("支払者を選択してください")
+            val amount = params["amount"]?.toLongOrNull()
+                ?: throw ServiceException("金額を指定してください")
+            paymentService.add(event, party.orderNo, payerUserId, amount, ctx.session.userId)
+            call.respondRedirect("/g/${ctx.guild.idLong}/events/${event.id}")
+        }
+    }
+}

@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: sakenomi
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # Cloudflare Tunnel は Docker ネットワーク内で bot:8080 に直接到達するため、
+      # ホスト公開はローカル動作確認用に localhost 限定で残す(コンテナ内部の
+      # リスニングポートは WEB_PORT 固定。ホスト側だけ LOCAL_WEB_PORT で変更可能)。
+      - "127.0.0.1:${LOCAL_WEB_PORT:-8080}:${WEB_PORT:-8080}"
+    environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      DB_URL: jdbc:postgresql://db:5432/sakenomi
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      CHANNEL_WARN_THRESHOLD: ${CHANNEL_WARN_THRESHOLD:-45}
+      DEVELOPMENT_GUILD_ID: ${DEVELOPMENT_GUILD_ID:-}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      SESSION_ENCRYPT_KEY: ${SESSION_ENCRYPT_KEY}
+      SESSION_SIGN_KEY: ${SESSION_SIGN_KEY}
+      WEB_PORT: ${WEB_PORT:-8080}
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - bot
+    restart: unless-stopped
+
+volumes:
+  pgdata:
