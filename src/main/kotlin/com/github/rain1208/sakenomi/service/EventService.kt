@@ -79,9 +79,7 @@ class EventService(
             participantRepository.add(eventId, organizer.idLong)
             gateway.grantRole(guild, organizer, role.idLong)
 
-            val recruitMessage = recruitChannel.sendMessageEmbeds(EventEmbeds.recruit(event))
-                .setActionRow(Button.success("event:join:$eventId", "参加する"))
-                .complete()
+            val recruitMessage = postRecruitMessage(recruitChannel, event)
             recruitMessageId = recruitMessage.idLong
             eventRepository.updateRecruitMessageId(eventId, recruitMessage.idLong)
 
@@ -115,6 +113,30 @@ class EventService(
         updateRecruitEmbed(guild, updated)
         return updated
     }
+
+    /** 募集メッセージの再送信。埋もれた/削除された募集メッセージを削除し、再度末尾に投稿し直す */
+    fun resend(guild: Guild, event: Event): Event {
+        if (event.status != EventStatus.RECRUITING) {
+            throw ServiceException("募集中のイベントのみ再送信できます")
+        }
+        val settings = settingsService.requireComplete(guild.idLong)
+        val recruitChannel = guild.getTextChannelById(settings.recruitChannelId!!)
+            ?: throw ServiceException("募集チャンネルが見つかりません。`/settings set` で再設定してください")
+
+        event.recruitMessageId?.let { gateway.deleteMessage(recruitChannel, it) }
+
+        val recruitMessage = postRecruitMessage(recruitChannel, event)
+        eventRepository.updateRecruitMessageId(event.id, recruitMessage.idLong)
+        return event.copy(recruitMessageId = recruitMessage.idLong)
+    }
+
+    private fun postRecruitMessage(recruitChannel: TextChannel, event: Event) =
+        recruitChannel.sendMessageEmbeds(EventEmbeds.recruit(event))
+            .setActionRow(
+                Button.success("event:join:${event.id}", "参加する"),
+                Button.danger("event:leave:${event.id}", "参加をキャンセル"),
+            )
+            .complete()
 
     /** アーカイブ化(§10.5) */
     fun archive(guild: Guild, event: Event) {

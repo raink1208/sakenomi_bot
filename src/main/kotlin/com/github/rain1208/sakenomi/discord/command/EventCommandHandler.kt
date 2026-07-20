@@ -23,6 +23,7 @@ class EventCommandHandler(
             "create" -> create(event)
             "edit" -> edit(event)
             "archive" -> archive(event)
+            "resend" -> resend(event)
             "delete" -> delete(event)
             "renumber" -> renumber(event)
             "add-user" -> addUser(event)
@@ -80,6 +81,21 @@ class EventCommandHandler(
         event.hook.sendMessage(
             "✅ **第${target.number}回 ${target.name}** をアーカイブ化しました。" +
                 "参加者は閲覧のみ可能になり、新規参加はできなくなります。",
+        ).queue()
+    }
+
+    private fun resend(event: SlashCommandInteractionEvent) {
+        val guild = event.guild!!
+        val target = eventService.resolveByChannel(guild, event.channel.idLong)
+        val settings = settingsService.get(guild.idLong)
+        if (!Permissions.isOrganizerOrAdmin(event.member!!, settings, target)) {
+            throw ServiceException("募集メッセージの再送信は幹事または運営のみ実行できます")
+        }
+
+        event.deferReply(true).queue()
+        eventService.resend(guild, target)
+        event.hook.sendMessage(
+            "✅ **第${target.number}回 ${target.name}** の募集メッセージを再送信しました",
         ).queue()
     }
 

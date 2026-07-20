@@ -46,6 +46,10 @@ object CommandRegistry {
                     OptionData(OptionType.STRING, "date", "開催日(YYYY-MM-DD)", false),
                 ),
             SubcommandData("archive", "イベントをアーカイブ化します(イベントチャンネル内で実行)"),
+            SubcommandData(
+                "resend",
+                "募集メッセージを募集チャンネルに再送信します(幹事/運営・イベントチャンネル内で実行)",
+            ),
             SubcommandData("delete", "イベントを削除します(運営のみ・イベントチャンネル内で実行)"),
             SubcommandData("renumber", "第n回の番号を修正します(運営のみ・イベントチャンネル内で実行)")
                 .addOptions(

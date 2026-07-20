@@ -152,11 +152,14 @@ class DiscordGateway {
         guild.removeRoleFromMember(member, role).complete()
     }
 
-    /** 募集メッセージの参加ボタンを無効化する */
+    /** 募集メッセージの参加/参加キャンセルボタンを無効化する */
     fun disableRecruitButton(channel: TextChannel, messageId: Long, eventId: Long) {
         channel.editMessageComponentsById(
             messageId,
-            ActionRow.of(Button.success("event:join:$eventId", "参加する").asDisabled()),
+            ActionRow.of(
+                Button.success("event:join:$eventId", "参加する").asDisabled(),
+                Button.danger("event:leave:$eventId", "参加をキャンセル").asDisabled(),
+            ),
         ).queue({}, {})
     }
 
