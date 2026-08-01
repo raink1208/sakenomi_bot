@@ -57,9 +57,14 @@ fun main() {
         eventRepository = koin.get<EventRepository>(),
     )
 
+    // グローバルコマンド登録(本番用) + guild_id 分離(§4)
+    jda.updateCommands().addCommands(CommandRegistry.commands()).queue {
+        logger.info("グローバルコマンドを登録しました: {}", it.joinToString(", ") { cmd -> "/${cmd.name}" })
+    }
+
     val developmentGuildId = config.developmentGuildId
     if (developmentGuildId != null) {
-        // 開発用ギルドにはギルドコマンドとして登録し即時反映させる
+        // 開発用ギルドにはギルドコマンドとしても登録し即時反映させる(グローバル反映の待ち時間を回避)
         val guild = jda.getGuildById(developmentGuildId)
             ?: error("開発用ギルド(id=$developmentGuildId)が見つかりません。Bot が招待されているか確認してください")
         guild.updateCommands().addCommands(CommandRegistry.commands()).queue {
@@ -68,11 +73,6 @@ fun main() {
                 developmentGuildId,
                 it.joinToString(", ") { cmd -> "/${cmd.name}" },
             )
-        }
-    } else {
-        // グローバルコマンド登録 + guild_id 分離(§4)
-        jda.updateCommands().addCommands(CommandRegistry.commands()).queue {
-            logger.info("スラッシュコマンドを登録しました: {}", it.joinToString(", ") { cmd -> "/${cmd.name}" })
         }
     }
 }
