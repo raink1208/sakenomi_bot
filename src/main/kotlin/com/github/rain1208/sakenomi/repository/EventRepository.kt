@@ -133,6 +133,14 @@ class EventRepository {
         }
     }
 
+    fun updateOrganizer(id: Long, organizerUserId: Long) {
+        transaction {
+            EventsTable.update({ EventsTable.id eq id }) {
+                it[EventsTable.organizerUserId] = organizerUserId
+            }
+        }
+    }
+
     fun updateNumber(id: Long, number: Int) {
         transaction {
             EventsTable.update({ EventsTable.id eq id }) {

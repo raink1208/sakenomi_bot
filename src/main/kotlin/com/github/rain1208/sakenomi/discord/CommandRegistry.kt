@@ -47,6 +47,13 @@ object CommandRegistry {
                 ),
             SubcommandData("archive", "イベントをアーカイブ化します(イベントチャンネル内で実行)"),
             SubcommandData(
+                "transfer-organizer",
+                "幹事を変更します(幹事/運営・イベントチャンネル内で実行)",
+            )
+                .addOptions(
+                    OptionData(OptionType.USER, "user", "新しい幹事", true),
+                ),
+            SubcommandData(
                 "resend",
                 "募集メッセージを募集チャンネルに再送信します(幹事/運営・イベントチャンネル内で実行)",
             ),

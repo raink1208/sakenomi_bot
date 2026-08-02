@@ -53,6 +53,21 @@ class AuditLogger(
         )
     }
 
+    fun organizerChanged(guild: Guild, event: Event, oldOrganizerUserId: Long, newOrganizerUserId: Long, executor: Member) {
+        send(
+            guild,
+            EmbedBuilder()
+                .setTitle("🔄 幹事変更")
+                .addField("イベント", "第${event.number}回 ${event.name}", false)
+                .addField("旧幹事", "<@$oldOrganizerUserId>", true)
+                .addField("新幹事", "<@$newOrganizerUserId>", true)
+                .addField("実行者", executor.asMention, true)
+                .setColor(0x3498DB)
+                .setTimestamp(Instant.now())
+                .build(),
+        )
+    }
+
     fun participantAdded(guild: Guild, event: Event, target: Member, executor: Member) {
         send(
             guild,

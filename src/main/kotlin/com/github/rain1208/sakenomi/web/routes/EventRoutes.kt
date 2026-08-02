@@ -186,6 +186,40 @@ fun Route.eventRoutes(
                 )
             }
 
+            // ギルドメンバー一覧の取得(Discord API)は数秒〜数十秒かかることがあるため、
+            // イベント詳細ページの表示をブロックしないよう別リクエストとして非同期に取得する
+            get("/organizer-candidates") {
+                val ctx = requireGuildContext(gateway, settingsService) ?: return@get
+                val event = resolveEvent(eventService, ctx.guild.idLong) ?: return@get
+                if (!Permissions.isOrganizerOrAdmin(ctx.member, ctx.settings, event)) {
+                    call.respondText("幹事の変更は幹事または運営のみ実行できます", status = HttpStatusCode.Forbidden)
+                    return@get
+                }
+                val candidates = gateway.listMembers(ctx.guild.idLong)
+                    .filter { !it.user.isBot && it.idLong != event.organizerUserId }
+                    .sortedBy { it.effectiveName }
+                    .map { mapOf("id" to it.idLong, "name" to it.effectiveName) }
+                call.respond(
+                    FreeMarkerContent(
+                        "event-organizer-candidates.ftl",
+                        mapOf("candidates" to candidates),
+                    ),
+                )
+            }
+
+            post("/transfer-organizer") {
+                val ctx = requireGuildContext(gateway, settingsService) ?: return@post
+                val event = resolveEvent(eventService, ctx.guild.idLong) ?: return@post
+                if (!Permissions.isOrganizerOrAdmin(ctx.member, ctx.settings, event)) {
+                    call.respondText("幹事の変更は幹事または運営のみ実行できます", status = HttpStatusCode.Forbidden)
+                    return@post
+                }
+                val userId = call.receiveParameters()["userId"]?.toLongOrNull()
+                    ?: throw ServiceException("新しい幹事を選択してください")
+                eventService.transferOrganizer(ctx.guild, event, ctx.member, userId)
+                call.respondRedirect("/g/${ctx.guild.idLong}/events/${event.id}")
+            }
+
             get("/edit") {
                 val ctx = requireGuildContext(gateway, settingsService) ?: return@get
                 val event = resolveEvent(eventService, ctx.guild.idLong) ?: return@get

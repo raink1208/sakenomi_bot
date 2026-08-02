@@ -47,6 +47,34 @@
     </#if>
   </div>
 
+  <#if canManage>
+    <details class="edit-details" id="transfer-organizer-details">
+      <summary>幹事を変更</summary>
+      <form method="post" action="/g/${guildId?c}/events/${event.id?c}/transfer-organizer" class="inline-fields">
+        <select name="userId" id="organizer-candidates-select" required>
+          <option value="" disabled selected>読み込み中...</option>
+        </select>
+        <button type="submit" class="button secondary">変更</button>
+      </form>
+    </details>
+    <script>
+      (function () {
+        var select = document.getElementById("organizer-candidates-select");
+        fetch("/g/${guildId?c}/events/${event.id?c}/organizer-candidates")
+          .then(function (res) {
+            if (!res.ok) throw new Error("failed");
+            return res.text();
+          })
+          .then(function (html) {
+            select.innerHTML = html;
+          })
+          .catch(function () {
+            select.innerHTML = '<option value="" disabled selected>取得に失敗しました</option>';
+          });
+      })();
+    </script>
+  </#if>
+
   <#if participants?? && participants?size gt 0>
     <h2>参加者一覧</h2>
     <ul class="participant-list">

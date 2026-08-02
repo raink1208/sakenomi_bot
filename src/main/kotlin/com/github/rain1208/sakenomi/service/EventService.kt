@@ -114,6 +114,37 @@ class EventService(
         return updated
     }
 
+    /** 幹事変更(幹事/運営のみ実行可)。新しい幹事が未参加の場合は参加者として自動追加する */
+    fun transferOrganizer(guild: Guild, event: Event, executor: Member, newOrganizerUserId: Long): Event {
+        if (event.organizerUserId == newOrganizerUserId) {
+            throw ServiceException("指定したユーザーは既に幹事です")
+        }
+        val newOrganizerMember = gateway.findMember(guild.idLong, newOrganizerUserId)
+            ?: throw ServiceException("対象ユーザーがサーバーに見つかりません")
+
+        if (!participantRepository.isParticipant(event.id, newOrganizerUserId)) {
+            participantRepository.add(event.id, newOrganizerUserId)
+            try {
+                gateway.grantRole(guild, newOrganizerMember, event.roleId)
+            } catch (e: Exception) {
+                participantRepository.remove(event.id, newOrganizerUserId)
+                throw ServiceException("ロール付与に失敗しました。Bot の権限を確認してください")
+            }
+        }
+
+        val oldOrganizerUserId = event.organizerUserId
+        eventRepository.updateOrganizer(event.id, newOrganizerUserId)
+        val updated = event.copy(organizerUserId = newOrganizerUserId)
+        updateRecruitEmbed(guild, updated)
+        gateway.sendChannelMessage(
+            guild,
+            event.channelId,
+            "[幹事変更] 幹事が ${newOrganizerMember.asMention} に変更されました",
+        )
+        auditLogger.organizerChanged(guild, updated, oldOrganizerUserId, newOrganizerUserId, executor)
+        return updated
+    }
+
     /** 募集メッセージの再送信。埋もれた/削除された募集メッセージを削除し、再度末尾に投稿し直す */
     fun resend(guild: Guild, event: Event): Event {
         if (event.status != EventStatus.RECRUITING) {

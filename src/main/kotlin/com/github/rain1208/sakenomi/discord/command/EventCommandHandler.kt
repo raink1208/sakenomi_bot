@@ -23,6 +23,7 @@ class EventCommandHandler(
             "create" -> create(event)
             "edit" -> edit(event)
             "archive" -> archive(event)
+            "transfer-organizer" -> transferOrganizer(event)
             "resend" -> resend(event)
             "delete" -> delete(event)
             "renumber" -> renumber(event)
@@ -82,6 +83,20 @@ class EventCommandHandler(
             "✅ **第${target.number}回 ${target.name}** をアーカイブ化しました。" +
                 "参加者は閲覧のみ可能になり、新規参加はできなくなります。",
         ).queue()
+    }
+
+    private fun transferOrganizer(event: SlashCommandInteractionEvent) {
+        val guild = event.guild!!
+        val target = eventService.resolveByChannel(guild, event.channel.idLong)
+        val settings = settingsService.get(guild.idLong)
+        if (!Permissions.isOrganizerOrAdmin(event.member!!, settings, target)) {
+            throw ServiceException("幹事の変更は幹事または運営のみ実行できます")
+        }
+
+        val newOrganizer = event.getOption("user")!!.asUser
+        event.deferReply(true).queue()
+        eventService.transferOrganizer(guild, target, event.member!!, newOrganizer.idLong)
+        event.hook.sendMessage("✅ 幹事を ${newOrganizer.asMention} に変更しました").queue()
     }
 
     private fun resend(event: SlashCommandInteractionEvent) {
