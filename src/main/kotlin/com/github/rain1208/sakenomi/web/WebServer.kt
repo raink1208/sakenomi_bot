@@ -6,6 +6,7 @@ import com.github.rain1208.sakenomi.domain.ServiceException
 import com.github.rain1208.sakenomi.repository.EventRepository
 import com.github.rain1208.sakenomi.repository.PartyRepository
 import com.github.rain1208.sakenomi.repository.PaymentRepository
+import com.github.rain1208.sakenomi.service.AttendanceService
 import com.github.rain1208.sakenomi.service.EventService
 import com.github.rain1208.sakenomi.service.ParticipantService
 import com.github.rain1208.sakenomi.service.PartyService
@@ -54,6 +55,7 @@ fun startWebServer(
     participantService: ParticipantService,
     partyService: PartyService,
     paymentService: PaymentService,
+    attendanceService: AttendanceService,
     partyRepository: PartyRepository,
     paymentRepository: PaymentRepository,
     eventRepository: EventRepository,
@@ -123,8 +125,8 @@ fun startWebServer(
             staticResources("/static", "static")
             authRoutes(oauthClient)
             guildRoutes(gateway)
-            eventRoutes(gateway, settingsService, eventService, participantService, partyService, paymentService)
-            partyPaymentRoutes(gateway, settingsService, eventService, partyService, paymentService, partyRepository)
+            eventRoutes(gateway, settingsService, eventService, participantService, partyService, paymentService, attendanceService)
+            partyPaymentRoutes(gateway, settingsService, eventService, partyService, paymentService, attendanceService, partyRepository)
             myPageRoutes(gateway, settingsService, eventService, participantService, partyService, paymentRepository)
             settingsRoutes(gateway, settingsService, eventRepository)
         }

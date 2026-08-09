@@ -11,7 +11,7 @@ import net.dv8tion.jda.api.interactions.commands.build.SubcommandData
 /** スラッシュコマンド定義(§9.1)。グローバル登録 + guild_id 分離(§4) */
 object CommandRegistry {
 
-    fun commands(): List<SlashCommandData> = listOf(settings(), event(), party(), payment())
+    fun commands(): List<SlashCommandData> = listOf(settings(), event(), party(), payment(), attendance())
 
     private fun settings() = Commands.slash("settings", "Bot の設定を管理します(運営のみ)")
         .setContexts(InteractionContextType.GUILD)
@@ -95,6 +95,23 @@ object CommandRegistry {
                     OptionData(OptionType.INTEGER, "amount", "受領金額(円)", true).setMinValue(0),
                 ),
             SubcommandData("list", "受領記録の一覧と合計を表示します")
+                .addOptions(
+                    OptionData(OptionType.INTEGER, "party", "お店の番号(n軒目)", false).setMinValue(1),
+                ),
+        )
+
+    private fun attendance() = Commands.slash("attendance", "飲み会単位の出欠を管理します(イベントチャンネル内で実行)")
+        .setContexts(InteractionContextType.GUILD)
+        .addSubcommands(
+            SubcommandData("set", "参加者の出欠を記録・修正します(幹事/運営)")
+                .addOptions(
+                    OptionData(OptionType.INTEGER, "party", "お店の番号(n軒目)", true).setMinValue(1),
+                    OptionData(OptionType.USER, "user", "対象の参加者", true),
+                    OptionData(OptionType.STRING, "status", "出欠状態", true)
+                        .addChoice("出席", "PRESENT")
+                        .addChoice("欠席", "ABSENT"),
+                ),
+            SubcommandData("list", "出席・欠席・未確認の一覧を表示します")
                 .addOptions(
                     OptionData(OptionType.INTEGER, "party", "お店の番号(n軒目)", false).setMinValue(1),
                 ),

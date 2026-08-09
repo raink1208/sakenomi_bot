@@ -4,6 +4,7 @@ import com.github.rain1208.sakenomi.discord.DiscordGateway
 import com.github.rain1208.sakenomi.domain.Event
 import com.github.rain1208.sakenomi.domain.EventStatus
 import com.github.rain1208.sakenomi.domain.ServiceException
+import com.github.rain1208.sakenomi.service.AttendanceService
 import com.github.rain1208.sakenomi.service.EventService
 import com.github.rain1208.sakenomi.service.ParticipantService
 import com.github.rain1208.sakenomi.service.PartyService
@@ -34,6 +35,7 @@ fun Route.eventRoutes(
     participantService: ParticipantService,
     partyService: PartyService,
     paymentService: PaymentService,
+    attendanceService: AttendanceService,
 ) {
     route("/g/{guildId}/events") {
         get {
@@ -121,6 +123,7 @@ fun Route.eventRoutes(
                 }
 
                 val payments = paymentService.list(event, null)
+                val attendances = attendanceService.list(event, null).associateBy { it.party.id }
                 val canManage = Permissions.isOrganizerOrAdmin(ctx.member, ctx.settings, event)
                 val isParticipant = participantService.isParticipant(event.id, ctx.session.userId)
                 val participantIds = participantService.listUserIds(event.id)
@@ -156,6 +159,9 @@ fun Route.eventRoutes(
                                             names[payment.payerUserId] ?: payment.payerUserId.toString(),
                                             names[payment.recordedBy] ?: payment.recordedBy.toString(),
                                         )
+                                    },
+                                    "attendance" to attendances[pp.party.id]?.entries.orEmpty().map { entry ->
+                                        ViewModels.attendanceEntry(entry, names[entry.userId] ?: entry.userId.toString())
                                     },
                                 )
                             },
@@ -195,8 +201,9 @@ fun Route.eventRoutes(
                     call.respondText("幹事の変更は幹事または運営のみ実行できます", status = HttpStatusCode.Forbidden)
                     return@get
                 }
+                val participantUserIds = participantService.listUserIds(event.id).toSet()
                 val candidates = gateway.listMembers(ctx.guild.idLong)
-                    .filter { !it.user.isBot && it.idLong != event.organizerUserId }
+                    .filter { !it.user.isBot && it.idLong != event.organizerUserId && it.idLong in participantUserIds }
                     .sortedBy { it.effectiveName }
                     .map { mapOf("id" to it.idLong, "name" to it.effectiveName) }
                 call.respond(

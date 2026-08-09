@@ -4,7 +4,7 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 
 /** ユーザー起因の業務エラー。メッセージをそのまま ephemeral 応答する */
-class ServiceException(message: String) : RuntimeException(message)
+class ServiceException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
 
 enum class EventStatus {
     RECRUITING,
@@ -70,4 +70,18 @@ data class Payment(
     val amount: Long,
     val recordedBy: Long,
     val receivedAt: OffsetDateTime,
+)
+
+enum class AttendanceStatus {
+    PRESENT,
+    ABSENT,
+}
+
+data class Attendance(
+    val id: Long,
+    val partyId: Long,
+    val userId: Long,
+    val status: AttendanceStatus,
+    val recordedBy: Long,
+    val recordedAt: OffsetDateTime,
 )

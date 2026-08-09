@@ -9,6 +9,7 @@ import com.github.rain1208.sakenomi.discord.listener.InteractionListener
 import com.github.rain1208.sakenomi.repository.EventRepository
 import com.github.rain1208.sakenomi.repository.PartyRepository
 import com.github.rain1208.sakenomi.repository.PaymentRepository
+import com.github.rain1208.sakenomi.service.AttendanceService
 import com.github.rain1208.sakenomi.service.EventService
 import com.github.rain1208.sakenomi.service.ParticipantService
 import com.github.rain1208.sakenomi.service.PartyService
@@ -52,6 +53,7 @@ fun main() {
         participantService = koin.get<ParticipantService>(),
         partyService = koin.get<PartyService>(),
         paymentService = koin.get<PaymentService>(),
+        attendanceService = koin.get<AttendanceService>(),
         partyRepository = koin.get<PartyRepository>(),
         paymentRepository = koin.get<PaymentRepository>(),
         eventRepository = koin.get<EventRepository>(),

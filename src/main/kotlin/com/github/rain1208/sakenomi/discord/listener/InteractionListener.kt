@@ -1,6 +1,7 @@
 package com.github.rain1208.sakenomi.discord.listener
 
 import com.github.rain1208.sakenomi.discord.button.EventButtonHandler
+import com.github.rain1208.sakenomi.discord.command.AttendanceCommandHandler
 import com.github.rain1208.sakenomi.discord.command.EventCommandHandler
 import com.github.rain1208.sakenomi.discord.command.PartyCommandHandler
 import com.github.rain1208.sakenomi.discord.command.PaymentCommandHandler
@@ -18,6 +19,7 @@ class InteractionListener(
     private val eventHandler: EventCommandHandler,
     private val partyHandler: PartyCommandHandler,
     private val paymentHandler: PaymentCommandHandler,
+    private val attendanceHandler: AttendanceCommandHandler,
     private val buttonHandler: EventButtonHandler,
 ) : ListenerAdapter() {
 
@@ -38,6 +40,7 @@ class InteractionListener(
                 "event" -> eventHandler.handle(event)
                 "party" -> partyHandler.handle(event)
                 "payment" -> paymentHandler.handle(event)
+                "attendance" -> attendanceHandler.handle(event)
             }
         }
     }

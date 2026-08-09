@@ -71,3 +71,14 @@ object PaymentsTable : Table("payments") {
 
     override val primaryKey = PrimaryKey(id)
 }
+
+object AttendancesTable : Table("attendances") {
+    val id = long("id").autoIncrement()
+    val partyId = long("party_id")
+    val userId = long("user_id")
+    val status = varchar("status", 16)
+    val recordedBy = long("recorded_by")
+    val recordedAt = timestampWithTimeZone("recorded_at")
+
+    override val primaryKey = PrimaryKey(id)
+}

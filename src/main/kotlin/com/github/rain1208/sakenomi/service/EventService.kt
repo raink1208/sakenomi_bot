@@ -9,11 +9,13 @@ import com.github.rain1208.sakenomi.domain.ServiceException
 import com.github.rain1208.sakenomi.repository.EventRepository
 import com.github.rain1208.sakenomi.repository.ParticipantRepository
 import com.github.rain1208.sakenomi.util.EventEmbeds
+import net.dv8tion.jda.api.Permission
 import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.entities.Member
 import net.dv8tion.jda.api.entities.Role
 import net.dv8tion.jda.api.entities.channel.concrete.Category
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel
+import net.dv8tion.jda.api.exceptions.ErrorResponseException
 import net.dv8tion.jda.api.interactions.components.buttons.Button
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
@@ -114,7 +116,7 @@ class EventService(
         return updated
     }
 
-    /** 幹事変更(幹事/運営のみ実行可)。新しい幹事が未参加の場合は参加者として自動追加する */
+    /** 幹事変更(幹事/運営のみ実行可)。参加中のユーザーにのみ変更できる */
     fun transferOrganizer(guild: Guild, event: Event, executor: Member, newOrganizerUserId: Long): Event {
         if (event.organizerUserId == newOrganizerUserId) {
             throw ServiceException("指定したユーザーは既に幹事です")
@@ -123,13 +125,7 @@ class EventService(
             ?: throw ServiceException("対象ユーザーがサーバーに見つかりません")
 
         if (!participantRepository.isParticipant(event.id, newOrganizerUserId)) {
-            participantRepository.add(event.id, newOrganizerUserId)
-            try {
-                gateway.grantRole(guild, newOrganizerMember, event.roleId)
-            } catch (e: Exception) {
-                participantRepository.remove(event.id, newOrganizerUserId)
-                throw ServiceException("ロール付与に失敗しました。Bot の権限を確認してください")
-            }
+            throw ServiceException("幹事の変更先は参加中のユーザーのみ指定できます")
         }
 
         val oldOrganizerUserId = event.organizerUserId
@@ -181,14 +177,38 @@ class EventService(
             ?: throw ServiceException("イベントチャンネルが見つかりません")
         checkCategoryCapacity(guild, archiveCategory)
 
-        gateway.moveToCategory(channel, archiveCategory)
+        try {
+            gateway.moveToCategory(channel, archiveCategory)
+        } catch (e: ErrorResponseException) {
+            throw ServiceException(
+                "チャンネルをアーカイブカテゴリへ移動できませんでした。Botに「チャンネルの管理」権限があるか、" +
+                    "Botのロールがアーカイブカテゴリの権限設定より上位にあるか確認してください",
+                e,
+            )
+        }
 
-        // 全ロールの送信権限を剥奪(閲覧のみ)。ロール自体は履歴閲覧のため維持する
-        val roles = listOfNotNull(
-            guild.getRoleById(event.roleId),
-            guild.getRoleById(settings.adminRoleId!!),
-        )
-        gateway.revokeSendPermission(channel, roles)
+        // 参加者ロールの送信権限を剥奪(閲覧のみ)。運営ロールは事後対応のため送信権限を維持する
+        val roles = listOfNotNull(guild.getRoleById(event.roleId))
+        try {
+            gateway.revokeSendPermission(channel, roles)
+        } catch (e: ErrorResponseException) {
+            val self = guild.selfMember
+            logger.error(
+                "revokeSendPermission に失敗しました。channel={}({}), " +
+                    "selfHasManagePermissions(channel)={}, selfTopRolePosition={}, roles={}",
+                channel.name,
+                channel.id,
+                self.hasPermission(channel, Permission.MANAGE_PERMISSIONS),
+                self.roles.maxOfOrNull { it.position },
+                roles.joinToString { r -> "${r.name}(id=${r.id}, position=${r.position}, canInteract=${self.canInteract(r)})" },
+                e,
+            )
+            throw ServiceException(
+                "チャンネルの権限変更に失敗しました。Botに「権限の管理」権限があるか、" +
+                    "Botのロールがイベントロールより上位にあるか確認してください(詳細はログを参照)",
+                e,
+            )
+        }
 
         disableRecruitButton(guild, settings, event)
         eventRepository.markArchived(event.id)

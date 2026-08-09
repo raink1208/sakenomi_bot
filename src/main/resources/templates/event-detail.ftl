@@ -132,6 +132,51 @@
           <p class="note">${party.note}</p>
         </#if>
 
+        <#if party.attendance?size gt 0>
+          <table class="attendance-table">
+            <thead><tr><th>参加者</th><th>出欠</th><#if canManage><th></th></#if></tr></thead>
+            <tbody>
+              <#list party.attendance as a>
+                <tr>
+                  <td>${a.name}</td>
+                  <td>
+                    <#if a.status == "PRESENT">✅ 出席
+                    <#elseif a.status == "ABSENT">❌ 欠席
+                    <#else>❔ 未確認
+                    </#if>
+                  </td>
+                  <#if canManage>
+                    <td>
+                      <form method="post" action="/g/${guildId?c}/parties/${party.id?c}/attendance" class="inline-form">
+                        <input type="hidden" name="userId" value="${a.userId?c}">
+                        <input type="hidden" name="status" value="PRESENT">
+                        <button type="submit" class="button small">出席</button>
+                      </form>
+                      <form method="post" action="/g/${guildId?c}/parties/${party.id?c}/attendance" class="inline-form">
+                        <input type="hidden" name="userId" value="${a.userId?c}">
+                        <input type="hidden" name="status" value="ABSENT">
+                        <button type="submit" class="button danger small">欠席</button>
+                      </form>
+                      <#if a.status??>
+                        <form method="post" action="/g/${guildId?c}/parties/${party.id?c}/attendance" class="inline-form">
+                          <input type="hidden" name="userId" value="${a.userId?c}">
+                          <input type="hidden" name="status" value="CLEAR">
+                          <button type="submit" class="button secondary small">未確認に戻す</button>
+                        </form>
+                      </#if>
+                    </td>
+                  </#if>
+                </tr>
+              </#list>
+            </tbody>
+          </table>
+          <#if canManage>
+            <form method="post" action="/g/${guildId?c}/parties/${party.id?c}/attendance/mark-all-present" class="inline-form">
+              <button type="submit" class="button secondary small">全員を出席にする</button>
+            </form>
+          </#if>
+        </#if>
+
         <#if canManage>
           <table class="payment-table">
             <thead><tr><th>支払者</th><th>金額</th><th>記録者</th><th>受領日時</th></tr></thead>
