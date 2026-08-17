@@ -23,6 +23,7 @@ class EventCommandHandler(
             "create" -> create(event)
             "edit" -> edit(event)
             "archive" -> archive(event)
+            "reopen" -> reopen(event)
             "transfer-organizer" -> transferOrganizer(event)
             "resend" -> resend(event)
             "delete" -> delete(event)
@@ -82,6 +83,21 @@ class EventCommandHandler(
         event.hook.sendMessage(
             "✅ **第${target.number}回 ${target.name}** をアーカイブ化しました。" +
                 "参加者は閲覧のみ可能になり、新規参加はできなくなります。",
+        ).queue()
+    }
+
+    private fun reopen(event: SlashCommandInteractionEvent) {
+        val guild = event.guild!!
+        val target = eventService.resolveByChannel(guild, event.channel.idLong)
+        val settings = settingsService.get(guild.idLong)
+        if (!Permissions.isOrganizerOrAdmin(event.member!!, settings, target)) {
+            throw ServiceException("アーカイブの解除は幹事または運営のみ実行できます")
+        }
+
+        event.deferReply(true).queue()
+        eventService.reopen(guild, target)
+        event.hook.sendMessage(
+            "✅ **第${target.number}回 ${target.name}** のアーカイブを解除しました。募集を再開できます。",
         ).queue()
     }
 

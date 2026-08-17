@@ -158,6 +158,15 @@ class EventRepository {
         }
     }
 
+    fun markReopened(id: Long) {
+        transaction {
+            EventsTable.update({ EventsTable.id eq id }) {
+                it[status] = EventStatus.RECRUITING.name
+                it[archivedAt] = null
+            }
+        }
+    }
+
     fun delete(id: Long) {
         transaction {
             EventsTable.deleteWhere { EventsTable.id eq id }

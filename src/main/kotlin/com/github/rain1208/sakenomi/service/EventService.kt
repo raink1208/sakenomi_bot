@@ -214,6 +214,54 @@ class EventService(
         eventRepository.markArchived(event.id)
     }
 
+    /** アーカイブ解除(reopen)。アーカイブ化(§10.5)の操作を巻き戻す */
+    fun reopen(guild: Guild, event: Event) {
+        if (event.status != EventStatus.ARCHIVED) {
+            throw ServiceException("このイベントはアーカイブされていません")
+        }
+        val settings = settingsService.requireComplete(guild.idLong)
+        val eventCategory = guild.getCategoryById(settings.eventCategoryId!!)
+            ?: throw ServiceException("イベントカテゴリが見つかりません。`/settings set` で再設定してください")
+        val channel = guild.getTextChannelById(event.channelId)
+            ?: throw ServiceException("イベントチャンネルが見つかりません")
+        checkCategoryCapacity(guild, eventCategory)
+
+        try {
+            gateway.moveToCategory(channel, eventCategory)
+        } catch (e: ErrorResponseException) {
+            throw ServiceException(
+                "チャンネルをイベントカテゴリへ移動できませんでした。Botに「チャンネルの管理」権限があるか、" +
+                    "Botのロールがイベントカテゴリの権限設定より上位にあるか確認してください",
+                e,
+            )
+        }
+
+        val roles = listOfNotNull(guild.getRoleById(event.roleId))
+        try {
+            gateway.restoreSendPermission(channel, roles)
+        } catch (e: ErrorResponseException) {
+            val self = guild.selfMember
+            logger.error(
+                "restoreSendPermission に失敗しました。channel={}({}), " +
+                    "selfHasManagePermissions(channel)={}, selfTopRolePosition={}, roles={}",
+                channel.name,
+                channel.id,
+                self.hasPermission(channel, Permission.MANAGE_PERMISSIONS),
+                self.roles.maxOfOrNull { it.position },
+                roles.joinToString { r -> "${r.name}(id=${r.id}, position=${r.position}, canInteract=${self.canInteract(r)})" },
+                e,
+            )
+            throw ServiceException(
+                "チャンネルの権限変更に失敗しました。Botに「権限の管理」権限があるか、" +
+                    "Botのロールがイベントロールより上位にあるか確認してください(詳細はログを参照)",
+                e,
+            )
+        }
+
+        enableRecruitButton(guild, settings, event)
+        eventRepository.markReopened(event.id)
+    }
+
     /** イベント削除(§10.6)。確認ボタン押下後に呼ばれる */
     fun delete(guild: Guild, event: Event, executor: Member) {
         val settings = settingsService.get(guild.idLong)
@@ -277,5 +325,11 @@ class EventService(
         val messageId = event.recruitMessageId ?: return
         val recruitChannel = settings.recruitChannelId?.let { guild.getTextChannelById(it) } ?: return
         gateway.disableRecruitButton(recruitChannel, messageId, event.id)
+    }
+
+    private fun enableRecruitButton(guild: Guild, settings: GuildSettings, event: Event) {
+        val messageId = event.recruitMessageId ?: return
+        val recruitChannel = settings.recruitChannelId?.let { guild.getTextChannelById(it) } ?: return
+        gateway.enableRecruitButton(recruitChannel, messageId, event.id)
     }
 }

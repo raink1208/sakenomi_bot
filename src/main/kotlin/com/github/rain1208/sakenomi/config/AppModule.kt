@@ -43,7 +43,7 @@ fun appModule(config: AppConfig) = module {
     single { EventService(get(), get(), get(), get(), get(), get()) }
     single { ParticipantService(get(), get(), get(), get()) }
     single { PartyService(get()) }
-    single { PaymentService(get(), get()) }
+    single { PaymentService(get(), get(), get()) }
     single { AttendanceService(get(), get(), get()) }
 
     // Handler

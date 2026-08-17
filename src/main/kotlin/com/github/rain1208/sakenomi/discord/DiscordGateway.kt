@@ -134,6 +134,15 @@ class DiscordGateway {
         }
     }
 
+    /** 対象ロールの送信権限を復元する(reopen用) */
+    fun restoreSendPermission(channel: TextChannel, roles: List<Role>) {
+        roles.forEach { role ->
+            channel.upsertPermissionOverride(role)
+                .grant(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND)
+                .complete()
+        }
+    }
+
     fun renameChannel(channel: TextChannel, name: String) {
         channel.manager.setName(name).queue()
     }
@@ -159,6 +168,17 @@ class DiscordGateway {
             ActionRow.of(
                 Button.success("event:join:$eventId", "参加する").asDisabled(),
                 Button.danger("event:leave:$eventId", "参加をキャンセル").asDisabled(),
+            ),
+        ).queue({}, {})
+    }
+
+    /** 募集メッセージの参加/参加キャンセルボタンを再有効化する(reopen用) */
+    fun enableRecruitButton(channel: TextChannel, messageId: Long, eventId: Long) {
+        channel.editMessageComponentsById(
+            messageId,
+            ActionRow.of(
+                Button.success("event:join:$eventId", "参加する"),
+                Button.danger("event:leave:$eventId", "参加をキャンセル"),
             ),
         ).queue({}, {})
     }

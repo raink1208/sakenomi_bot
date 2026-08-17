@@ -46,6 +46,7 @@ object CommandRegistry {
                     OptionData(OptionType.STRING, "date", "開催日(YYYY-MM-DD)", false),
                 ),
             SubcommandData("archive", "イベントをアーカイブ化します(イベントチャンネル内で実行)"),
+            SubcommandData("reopen", "アーカイブ化したイベントを再開します(イベントチャンネル内で実行)"),
             SubcommandData(
                 "transfer-organizer",
                 "幹事を変更します(幹事/運営・イベントチャンネル内で実行)",

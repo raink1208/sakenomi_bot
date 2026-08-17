@@ -35,6 +35,10 @@
         <form method="post" action="/g/${guildId?c}/events/${event.id?c}/archive" class="inline-form">
           <button type="submit" class="button secondary">アーカイブ化</button>
         </form>
+      <#else>
+        <form method="post" action="/g/${guildId?c}/events/${event.id?c}/reopen" class="inline-form">
+          <button type="submit" class="button secondary">アーカイブ解除</button>
+        </form>
       </#if>
     </#if>
 
@@ -140,7 +144,8 @@
                 <tr>
                   <td>${a.name}</td>
                   <td>
-                    <#if a.status == "PRESENT">✅ 出席
+                    <#if !a.status??>❔ 未確認
+                    <#elseif a.status == "PRESENT">✅ 出席
                     <#elseif a.status == "ABSENT">❌ 欠席
                     <#else>❔ 未確認
                     </#if>

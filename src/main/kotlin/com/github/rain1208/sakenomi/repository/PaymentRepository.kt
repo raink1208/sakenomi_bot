@@ -5,17 +5,18 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.upsert
 import java.time.OffsetDateTime
 
 class PaymentRepository {
 
-    fun insert(partyId: Long, payerUserId: Long, amount: Long, recordedBy: Long) {
+    /** party_id + payer_user_id の一意制約で upsert する(同じ人への再登録は金額を上書き) */
+    fun upsert(partyId: Long, payerUserId: Long, amount: Long, recordedBy: Long) {
         transaction {
-            PaymentsTable.insert {
+            PaymentsTable.upsert(PaymentsTable.partyId, PaymentsTable.payerUserId) {
                 it[PaymentsTable.partyId] = partyId
                 it[PaymentsTable.payerUserId] = payerUserId
                 it[PaymentsTable.amount] = amount

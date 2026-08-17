@@ -313,6 +313,17 @@ fun Route.eventRoutes(
                 call.respondRedirect("/g/${ctx.guild.idLong}/events/${event.id}")
             }
 
+            post("/reopen") {
+                val ctx = requireGuildContext(gateway, settingsService) ?: return@post
+                val event = resolveEvent(eventService, ctx.guild.idLong) ?: return@post
+                if (!Permissions.isOrganizerOrAdmin(ctx.member, ctx.settings, event)) {
+                    call.respondText("アーカイブ解除の権限がありません", status = HttpStatusCode.Forbidden)
+                    return@post
+                }
+                eventService.reopen(ctx.guild, event)
+                call.respondRedirect("/g/${ctx.guild.idLong}/events/${event.id}")
+            }
+
             get("/delete") {
                 val ctx = requireGuildContext(gateway, settingsService) ?: return@get
                 val event = resolveEvent(eventService, ctx.guild.idLong) ?: return@get
