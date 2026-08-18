@@ -127,10 +127,8 @@ fun Route.eventRoutes(
                 val canManage = Permissions.isOrganizerOrAdmin(ctx.member, ctx.settings, event)
                 val isParticipant = participantService.isParticipant(event.id, ctx.session.userId)
                 val participantIds = participantService.listUserIds(event.id)
-                val userIds = (payments.flatMap { pp -> pp.payments.map { it.payerUserId } + pp.payments.map { it.recordedBy } })
-                    .toMutableSet()
+                val userIds = participantIds.toMutableSet()
                 userIds.add(event.organizerUserId)
-                userIds.addAll(participantIds)
                 val names = gateway.resolveDisplayNames(ctx.guild.idLong, userIds)
 
                 call.respond(
@@ -152,16 +150,14 @@ fun Route.eventRoutes(
                                 )
                             },
                             "parties" to payments.map { pp ->
+                                val paymentsByUser = pp.payments.associateBy { it.payerUserId }
                                 ViewModels.party(pp.party, pp.total) + mapOf(
-                                    "payments" to pp.payments.map { payment ->
-                                        ViewModels.payment(
-                                            payment,
-                                            names[payment.payerUserId] ?: payment.payerUserId.toString(),
-                                            names[payment.recordedBy] ?: payment.recordedBy.toString(),
-                                        )
-                                    },
                                     "attendance" to attendances[pp.party.id]?.entries.orEmpty().map { entry ->
-                                        ViewModels.attendanceEntry(entry, names[entry.userId] ?: entry.userId.toString())
+                                        ViewModels.attendanceEntry(
+                                            entry,
+                                            names[entry.userId] ?: entry.userId.toString(),
+                                            paymentsByUser[entry.userId]?.amount,
+                                        )
                                     },
                                 )
                             },

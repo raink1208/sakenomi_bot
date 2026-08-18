@@ -2,7 +2,9 @@ package com.github.rain1208.sakenomi.repository
 
 import com.github.rain1208.sakenomi.domain.Party
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.max
 import org.jetbrains.exposed.sql.selectAll
@@ -57,6 +59,12 @@ class PartyRepository {
                 it[PartiesTable.totalAmount] = totalAmount
                 it[PartiesTable.note] = note
             }
+        }
+    }
+
+    fun delete(id: Long) {
+        transaction {
+            PartiesTable.deleteWhere { PartiesTable.id eq id }
         }
     }
 

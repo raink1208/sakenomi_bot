@@ -39,6 +39,25 @@
 
 * { box-sizing: border-box; }
 
+#progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 0;
+  background: var(--color-accent);
+  z-index: 1000;
+  opacity: 0;
+  transition: width 0.25s ease, opacity 0.2s ease;
+}
+#progress-bar.active { opacity: 1; }
+
+.htmx-request.button,
+.htmx-request .button {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
 html { -webkit-text-size-adjust: 100%; }
 
 body {
@@ -171,6 +190,77 @@ h2 {
 
 .inline-form { display: inline-block; margin: 4px 0; }
 
+.field-hint { color: var(--color-muted); font-size: 0.85rem; margin: 10px 0 0; }
+
+.attendance-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 18px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.status-toggle-group {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+.status-toggle {
+  position: relative;
+  display: block;
+  cursor: pointer;
+  user-select: none;
+}
+.status-toggle:not(:last-child) { border-right: 1px solid var(--color-border); }
+.status-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+.status-toggle span {
+  display: block;
+  padding: 7px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.status-toggle:hover span { color: var(--color-text); }
+.status-toggle:focus-within { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.status-toggle-present input:checked + span { background: var(--color-success); color: #fff; }
+.status-toggle-absent input:checked + span { background: var(--color-danger); color: #fff; }
+.status-toggle-clear input:checked + span { background: var(--color-muted); color: #fff; }
+
+.amount-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  transition: border-color 0.15s ease;
+}
+.amount-field:focus-within { border-color: var(--color-accent); }
+.amount-unit { color: var(--color-muted); font-size: 0.85rem; }
+.amount-field input {
+  width: 90px;
+  border: none;
+  background: transparent;
+  padding: 8px 0 8px 4px;
+  font-size: 0.92rem;
+  color: var(--color-text);
+}
+.amount-field input:focus { outline: none; }
+.amount-field input::-webkit-outer-spin-button,
+.amount-field input::-webkit-inner-spin-button { margin-left: 4px; }
+
 .link-button {
   background: none;
   border: none;
@@ -224,11 +314,18 @@ tbody tr:last-child td { border-bottom: none; }
 tbody tr { transition: background-color 0.12s ease; }
 tbody tr:hover { background: var(--color-surface-alt); }
 
-.event-table, .payment-table {
+.event-table, .payment-table, .attendance-table {
   display: block;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+.event-table td, .payment-table td, .attendance-table td { vertical-align: middle; }
+.primary-cell { font-weight: 600; }
+
+.amount-diff { font-weight: 700; }
+.amount-diff.positive { color: var(--color-success); }
+.amount-diff.negative { color: var(--color-danger); }
 
 .empty {
   color: var(--color-muted);
@@ -421,4 +518,65 @@ tbody tr:hover { background: var(--color-surface-alt); }
   .renumber-form input { width: 100%; }
   .inline-fields { flex-direction: column; align-items: stretch; }
   .login-card { padding: 50px 0; }
+
+  .attendance-table,
+  .event-table,
+  .payment-table {
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    overflow-x: visible;
+  }
+  .attendance-table thead,
+  .event-table thead,
+  .payment-table thead { display: none; }
+  .attendance-table, .attendance-table tbody, .attendance-table tr, .attendance-table td,
+  .event-table, .event-table tbody, .event-table tr, .event-table td,
+  .payment-table, .payment-table tbody, .payment-table tr, .payment-table td { display: block; width: 100%; }
+  .attendance-table tr,
+  .event-table tr,
+  .payment-table tr {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .attendance-table td,
+  .event-table td,
+  .payment-table td { padding: 6px 0; border-bottom: none; }
+  .attendance-table td[data-label]::before,
+  .event-table td[data-label]::before,
+  .payment-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--color-muted);
+    margin-bottom: 4px;
+  }
+  .primary-cell { padding-top: 0; font-size: 1rem; }
+  .primary-cell::before { content: none; }
+  .primary-cell a { display: block; padding: 2px 0; }
+
+  /* タップ操作しやすいよう主要な操作要素の当たり判定を広げる */
+  .button { padding: 12px 20px; font-size: 1rem; }
+  .button.small { padding: 8px 14px; font-size: 0.85rem; }
+  .link-button { padding: 8px 0; font-size: 0.95rem; }
+  .inline-fields input, .inline-fields select,
+  .form-card input, .form-card select { padding: 12px; font-size: 1rem; }
+  .status-toggle span { padding: 11px 14px; font-size: 0.88rem; }
+  .amount-field input { padding: 11px 0 11px 4px; font-size: 1rem; }
+  .edit-details summary { padding: 6px 0; font-size: 0.92rem; }
+  .guild-nav a { padding: 9px 12px; }
+
+  .status-toggle-group { width: 100%; }
+  .status-toggle { flex: 1; }
+  .status-toggle span { text-align: center; }
+  .amount-field { width: 100%; }
+  .amount-field input { flex: 1; width: auto; }
+  .attendance-form-actions { flex-direction: column; align-items: stretch; }
+  .attendance-form-actions .button { width: 100%; justify-content: center; }
+  .attendance-form-actions .link-button { text-align: center; }
 }

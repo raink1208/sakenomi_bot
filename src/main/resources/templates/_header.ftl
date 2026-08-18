@@ -5,8 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>飲み会管理コンソール</title>
   <link rel="stylesheet" href="/static/style.css">
+  <!-- 通常のフルリロードと同じ体験にするため、4xx/5xx のエラーページ(error.ftl)も本文を差し替える -->
+  <meta name="htmx-config" content='{"responseHandling":[{"code":".*", "swap": true}]}'>
+  <script src="/static/htmx.min.js"></script>
 </head>
-<body>
+<body hx-boost="true">
+<div id="progress-bar"></div>
 <header class="topbar">
   <a class="brand" href="/">🍻 飲み会管理コンソール</a>
   <#if guildId??>

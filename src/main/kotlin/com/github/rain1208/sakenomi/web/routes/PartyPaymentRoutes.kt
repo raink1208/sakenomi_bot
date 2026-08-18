@@ -53,6 +53,23 @@ fun Route.partyPaymentRoutes(
             call.respondRedirect("/g/${ctx.guild.idLong}/events/${event.id}")
         }
 
+        post("/delete") {
+            val ctx = requireGuildContext(gateway, settingsService) ?: return@post
+            val partyId = call.parameters["partyId"]?.toLongOrNull()
+            val party = partyId?.let { partyRepository.findById(it) }
+            val event = party?.let { eventService.findById(it.eventId) }
+            if (party == null || event == null || event.guildId != ctx.guild.idLong) {
+                call.respondText("お店情報が見つかりません", status = HttpStatusCode.NotFound)
+                return@post
+            }
+            if (!Permissions.isOrganizerOrAdmin(ctx.member, ctx.settings, event)) {
+                call.respondText("削除権限がありません", status = HttpStatusCode.Forbidden)
+                return@post
+            }
+            partyRepository.delete(party.id)
+            call.respondRedirect("/g/${ctx.guild.idLong}/events/${event.id}")
+        }
+
         post("/payments") {
             val ctx = requireGuildContext(gateway, settingsService) ?: return@post
             val partyId = call.parameters["partyId"]?.toLongOrNull()
@@ -99,6 +116,39 @@ fun Route.partyPaymentRoutes(
                 }
             }
             call.respondRedirect("/g/${ctx.guild.idLong}/events/${event.id}")
+        }
+
+        post("/attendance-payments") {
+            val ctx = requireGuildContext(gateway, settingsService) ?: return@post
+            val partyId = call.parameters["partyId"]?.toLongOrNull()
+            val party = partyId?.let { partyRepository.findById(it) }
+            val event = party?.let { eventService.findById(it.eventId) }
+            if (party == null || event == null || event.guildId != ctx.guild.idLong) {
+                call.respondText("お店情報が見つかりません", status = HttpStatusCode.NotFound)
+                return@post
+            }
+            if (!Permissions.isOrganizerOrAdmin(ctx.member, ctx.settings, event)) {
+                call.respondText("出欠・受領記録の記録権限がありません", status = HttpStatusCode.Forbidden)
+                return@post
+            }
+            val params = call.receiveParameters()
+            val statuses = params.names()
+                .filter { it.startsWith("status_") }
+                .mapNotNull { key ->
+                    val userId = key.removePrefix("status_").toLongOrNull() ?: return@mapNotNull null
+                    val status = params[key] ?: return@mapNotNull null
+                    userId to status
+                }.toMap()
+            val amounts = params.names()
+                .filter { it.startsWith("amount_") }
+                .mapNotNull { key ->
+                    val userId = key.removePrefix("amount_").toLongOrNull() ?: return@mapNotNull null
+                    val amount = params[key]?.takeIf { it.isNotBlank() }?.toLongOrNull() ?: return@mapNotNull null
+                    userId to amount
+                }.toMap()
+            attendanceService.setAll(event, party.orderNo, statuses, ctx.session.userId)
+            paymentService.setAll(event, party.orderNo, amounts, ctx.session.userId)
+            call.respondRedirect("/g/${ctx.guild.idLong}/events/${event.id}#party-${party.id}")
         }
 
         post("/attendance/mark-all-present") {

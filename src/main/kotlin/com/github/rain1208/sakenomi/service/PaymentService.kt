@@ -34,6 +34,19 @@ class PaymentService(
         return PartyPayments(party, paymentRepository.listByParty(party.id), paymentRepository.totalByParty(party.id))
     }
 
+    /**
+     * 受領記録の一括更新(参加者一覧からの一斉更新用)。amounts は userId -> 金額(1円以上のみ反映、それ以外はスキップ)。
+     * 金額を登録した人は出席したとみなす。
+     */
+    fun setAll(event: Event, orderNo: Int, amounts: Map<Long, Long>, recordedBy: Long): PartyPayments {
+        val party = partyService.findByOrder(event, orderNo)
+        amounts.filterValues { it > 0 }.forEach { (userId, amount) ->
+            paymentRepository.upsert(party.id, userId, amount, recordedBy)
+            attendanceRepository.upsert(party.id, userId, AttendanceStatus.PRESENT, recordedBy)
+        }
+        return PartyPayments(party, paymentRepository.listByParty(party.id), paymentRepository.totalByParty(party.id))
+    }
+
     /** 受領一覧。orderNo 指定時はそのお店のみ */
     fun list(event: Event, orderNo: Int?): List<PartyPayments> {
         val parties = if (orderNo != null) {

@@ -11,10 +11,10 @@
       <tbody>
         <#list events as event>
           <tr>
-            <td>第${event.number}回</td>
-            <td><a href="/g/${guildId?c}/events/${event.id?c}">${event.name}</a></td>
-            <td>${event.date}</td>
-            <td><#if event.isRecruiting>募集中<#else>アーカイブ済</#if></td>
+            <td data-label="第n回">第${event.number}回</td>
+            <td data-label="名前" class="primary-cell"><a href="/g/${guildId?c}/events/${event.id?c}">${event.name}</a></td>
+            <td data-label="開催日">${event.date}</td>
+            <td data-label="状態"><#if event.isRecruiting>募集中<#else>アーカイブ済</#if></td>
           </tr>
         </#list>
       </tbody>
@@ -30,10 +30,10 @@
       <tbody>
         <#list payments as payment>
           <tr>
-            <td>${payment.eventName}</td>
-            <td>${payment.shopName}</td>
-            <td>${payment.amountText}</td>
-            <td>${payment.receivedAt}</td>
+            <td data-label="イベント" class="primary-cell">${payment.eventName}</td>
+            <td data-label="お店">${payment.shopName}</td>
+            <td data-label="金額">${payment.amountText}</td>
+            <td data-label="受領日時">${payment.receivedAt}</td>
           </tr>
         </#list>
       </tbody>

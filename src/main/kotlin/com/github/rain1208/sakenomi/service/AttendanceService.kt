@@ -37,6 +37,24 @@ class AttendanceService(
         return buildSummary(event, party)
     }
 
+    /**
+     * 飲み会単位の出欠を一括更新する。statuses は userId -> "PRESENT"/"ABSENT"/"CLEAR"。
+     * イベント参加者以外のキーは無視する。
+     */
+    fun setAll(event: Event, orderNo: Int, statuses: Map<Long, String>, recordedBy: Long): PartyAttendances {
+        val party = partyService.findByOrder(event, orderNo)
+        val participantIds = participantRepository.listUserIdsByEvent(event.id).toSet()
+        statuses.filterKeys { it in participantIds }.forEach { (userId, statusParam) ->
+            if (statusParam == "CLEAR") {
+                attendanceRepository.delete(party.id, userId)
+            } else {
+                val status = AttendanceStatus.entries.find { it.name == statusParam } ?: return@forEach
+                attendanceRepository.upsert(party.id, userId, status, recordedBy)
+            }
+        }
+        return buildSummary(event, party)
+    }
+
     /** 未確認の参加者だけ一括で出席にする(既に記録済みの人は上書きしない) */
     fun markAllPresent(event: Event, orderNo: Int, recordedBy: Long): PartyAttendances {
         val party = partyService.findByOrder(event, orderNo)

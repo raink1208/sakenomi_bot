@@ -83,28 +83,33 @@
     <h2>参加者一覧</h2>
     <ul class="participant-list">
       <#list participants as p>
-        <li>
-          ${p.name}
-          <#if isAdmin && !p.isOrganizer>
-            <form method="post" action="/g/${guildId?c}/events/${event.id?c}/remove-user" class="inline-form">
-              <input type="hidden" name="userId" value="${p.id?c}">
-              <button type="submit" class="button danger small">削除</button>
-            </form>
-          </#if>
-        </li>
+        <li>${p.name}</li>
       </#list>
     </ul>
   </#if>
 
   <#if isAdmin>
-    <details class="edit-details" id="add-participant-details">
-      <summary>参加者を追加</summary>
-      <form method="post" action="/g/${guildId?c}/events/${event.id?c}/add-user" class="inline-fields">
-        <select name="userId" id="addable-members-select" required>
-          <option value="" disabled selected>読み込み中...</option>
-        </select>
-        <button type="submit" class="button secondary">追加</button>
-      </form>
+    <details class="edit-details" id="edit-participant-details">
+      <summary>参加者を編集</summary>
+      <div class="inline-fields">
+        <form method="post" action="/g/${guildId?c}/events/${event.id?c}/add-user" class="inline-fields">
+          <select name="userId" id="addable-members-select" required>
+            <option value="" disabled selected>読み込み中...</option>
+          </select>
+          <button type="submit" class="button secondary">追加</button>
+        </form>
+        <form method="post" action="/g/${guildId?c}/events/${event.id?c}/remove-user" class="inline-fields">
+          <select name="userId" required>
+            <option value="" disabled selected>削除するメンバーを選択</option>
+            <#list participants as p>
+              <#if !p.isOrganizer>
+                <option value="${p.id?c}">${p.name}</option>
+              </#if>
+            </#list>
+          </select>
+          <button type="submit" class="button danger">削除</button>
+        </form>
+      </div>
     </details>
     <script>
       (function () {
@@ -129,74 +134,99 @@
     <p class="empty">まだ飲み会が登録されていません。</p>
   <#else>
     <#list parties as party>
-      <div class="party-card">
+      <div class="party-card" id="party-${party.id?c}">
         <h3>${party.orderNo}軒目: ${party.shopName}</h3>
-        <p>会計金額: ${party.totalAmountText}<#if party.receivedTotalText??> / 受領合計: ${party.receivedTotalText}</#if></p>
+        <p>
+          会計金額: ${party.totalAmountText}
+          <#if party.receivedTotalText??> / 受領合計: ${party.receivedTotalText}</#if>
+          <#if party.diffText??>
+            / 差額: <span class="amount-diff <#if party.diffPositive>positive<#else>negative</#if>">${party.diffText}</span>
+          </#if>
+        </p>
         <#if party.note??>
           <p class="note">${party.note}</p>
         </#if>
 
         <#if party.attendance?size gt 0>
-          <table class="attendance-table">
-            <thead><tr><th>参加者</th><th>出欠</th><#if canManage><th></th></#if></tr></thead>
-            <tbody>
-              <#list party.attendance as a>
-                <tr>
-                  <td>${a.name}</td>
-                  <td>
-                    <#if !a.status??>❔ 未確認
-                    <#elseif a.status == "PRESENT">✅ 出席
-                    <#elseif a.status == "ABSENT">❌ 欠席
-                    <#else>❔ 未確認
-                    </#if>
-                  </td>
-                  <#if canManage>
-                    <td>
-                      <form method="post" action="/g/${guildId?c}/parties/${party.id?c}/attendance" class="inline-form">
-                        <input type="hidden" name="userId" value="${a.userId?c}">
-                        <input type="hidden" name="status" value="PRESENT">
-                        <button type="submit" class="button small">出席</button>
-                      </form>
-                      <form method="post" action="/g/${guildId?c}/parties/${party.id?c}/attendance" class="inline-form">
-                        <input type="hidden" name="userId" value="${a.userId?c}">
-                        <input type="hidden" name="status" value="ABSENT">
-                        <button type="submit" class="button danger small">欠席</button>
-                      </form>
-                      <#if a.status??>
-                        <form method="post" action="/g/${guildId?c}/parties/${party.id?c}/attendance" class="inline-form">
-                          <input type="hidden" name="userId" value="${a.userId?c}">
-                          <input type="hidden" name="status" value="CLEAR">
-                          <button type="submit" class="button secondary small">未確認に戻す</button>
-                        </form>
+          <#if canManage>
+            <form method="post" action="/g/${guildId?c}/parties/${party.id?c}/attendance-payments">
+              <p class="field-hint">出欠・受領金額を変更して、最後に更新してください。</p>
+              <table class="attendance-table">
+                <thead>
+                  <tr>
+                    <th>名前</th>
+                    <th>出欠ステータス</th>
+                    <th>受領金額</th>
+                    <th>出欠変更ボタン</th>
+                    <th>受領金額の入力</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <#list party.attendance as a>
+                    <tr>
+                      <td data-label="名前" class="primary-cell">${a.name}</td>
+                      <td data-label="出欠ステータス">
+                        <#if !a.status??>❔ 未確認
+                        <#elseif a.status == "PRESENT">✅ 出席
+                        <#elseif a.status == "ABSENT">❌ 欠席
+                        <#else>❔ 未確認
+                        </#if>
+                      </td>
+                      <td data-label="受領金額">${a.receivedAmountText}</td>
+                      <td data-label="出欠変更ボタン">
+                        <div class="status-toggle-group">
+                          <label class="status-toggle status-toggle-present">
+                            <input type="radio" name="status_${a.userId?c}" value="PRESENT"<#if a.status?? && a.status == "PRESENT"> checked</#if>>
+                            <span>出席</span>
+                          </label>
+                          <label class="status-toggle status-toggle-absent">
+                            <input type="radio" name="status_${a.userId?c}" value="ABSENT"<#if a.status?? && a.status == "ABSENT"> checked</#if>>
+                            <span>欠席</span>
+                          </label>
+                          <label class="status-toggle status-toggle-clear">
+                            <input type="radio" name="status_${a.userId?c}" value="CLEAR"<#if !a.status??> checked</#if>>
+                            <span>未確認</span>
+                          </label>
+                        </div>
+                      </td>
+                      <td data-label="受領金額の入力">
+                        <label class="amount-field">
+                          <span class="amount-unit">¥</span>
+                          <input type="number" name="amount_${a.userId?c}" min="0" step="100" value="${a.receivedAmount!""}" placeholder="0" inputmode="numeric">
+                        </label>
+                      </td>
+                    </tr>
+                  </#list>
+                </tbody>
+              </table>
+              <div class="attendance-form-actions">
+                <button type="button" class="link-button" onclick="this.closest('form').querySelectorAll('input[type=radio][value=PRESENT]').forEach(function(r){ r.checked = true; })">全員を出席にする</button>
+                <button type="submit" class="button">出欠・受領金額を更新</button>
+              </div>
+            </form>
+          <#else>
+            <table class="attendance-table">
+              <thead><tr><th>名前</th><th>出欠ステータス</th><th>受領金額</th></tr></thead>
+              <tbody>
+                <#list party.attendance as a>
+                  <tr>
+                    <td data-label="名前" class="primary-cell">${a.name}</td>
+                    <td data-label="出欠ステータス">
+                      <#if !a.status??>❔ 未確認
+                      <#elseif a.status == "PRESENT">✅ 出席
+                      <#elseif a.status == "ABSENT">❌ 欠席
+                      <#else>❔ 未確認
                       </#if>
                     </td>
-                  </#if>
-                </tr>
-              </#list>
-            </tbody>
-          </table>
-          <#if canManage>
-            <form method="post" action="/g/${guildId?c}/parties/${party.id?c}/attendance/mark-all-present" class="inline-form">
-              <button type="submit" class="button secondary small">全員を出席にする</button>
-            </form>
+                    <td data-label="受領金額">${a.receivedAmountText}</td>
+                  </tr>
+                </#list>
+              </tbody>
+            </table>
           </#if>
         </#if>
 
         <#if canManage>
-          <table class="payment-table">
-            <thead><tr><th>支払者</th><th>金額</th><th>記録者</th><th>受領日時</th></tr></thead>
-            <tbody>
-              <#list party.payments as payment>
-                <tr>
-                  <td>${payment.payerName}</td>
-                  <td>${payment.amountText}</td>
-                  <td>${payment.recordedByName}</td>
-                  <td>${payment.receivedAt}</td>
-                </tr>
-              </#list>
-            </tbody>
-          </table>
-
           <details class="edit-details">
             <summary>お店情報を編集</summary>
             <form method="post" action="/g/${guildId?c}/parties/${party.id?c}/edit" class="inline-fields">
@@ -204,18 +234,8 @@
               <input type="number" name="totalAmount" min="0" value="${party.totalAmount!""}" placeholder="会計金額">
               <button type="submit" class="button secondary">更新</button>
             </form>
-          </details>
-
-          <details class="edit-details">
-            <summary>受領記録を追加</summary>
-            <form method="post" action="/g/${guildId?c}/parties/${party.id?c}/payments" class="inline-fields">
-              <select name="payerUserId" required>
-                <#list participants as p>
-                  <option value="${p.id?c}">${p.name}</option>
-                </#list>
-              </select>
-              <input type="number" name="amount" min="1" placeholder="受領金額" required>
-              <button type="submit" class="button secondary">登録</button>
+            <form method="post" action="/g/${guildId?c}/parties/${party.id?c}/delete" class="inline-form" onsubmit="return confirm('このお店を削除しますか?出欠・受領記録も削除されます。');">
+              <button type="submit" class="button danger small">このお店を削除</button>
             </form>
           </details>
         </#if>

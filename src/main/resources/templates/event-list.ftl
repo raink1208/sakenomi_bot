@@ -26,12 +26,12 @@
       <tbody>
         <#list events as event>
           <tr>
-            <td>第${event.number}回</td>
-            <td><a href="/g/${guildId?c}/events/${event.id?c}">${event.name}</a></td>
-            <td>${event.area}</td>
-            <td>${event.date}</td>
-            <td>${event.organizerName}</td>
-            <td>${event.participantCount!""}</td>
+            <td data-label="第n回">第${event.number}回</td>
+            <td data-label="名前" class="primary-cell"><a href="/g/${guildId?c}/events/${event.id?c}">${event.name}</a></td>
+            <td data-label="エリア">${event.area}</td>
+            <td data-label="開催日">${event.date}</td>
+            <td data-label="幹事">${event.organizerName}</td>
+            <td data-label="参加人数">${event.participantCount!""}</td>
           </tr>
         </#list>
       </tbody>

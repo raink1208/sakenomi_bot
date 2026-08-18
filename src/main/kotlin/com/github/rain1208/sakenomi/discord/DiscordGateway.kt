@@ -12,6 +12,7 @@ import net.dv8tion.jda.api.interactions.components.buttons.Button
 import net.dv8tion.jda.api.exceptions.ErrorResponseException
 import org.slf4j.LoggerFactory
 import java.time.Duration
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeoutException
 
 /** チャンネル / ロール / 権限の生成・変更・削除の抽象化 */
@@ -43,11 +44,21 @@ class DiscordGateway {
     fun listMutualGuilds(userId: Long): List<Guild> =
         jda.guilds.filter { guild -> findMember(guild.idLong, userId) != null }
 
-    /** 参加者一覧・受領記録の表示名解決 */
+    /**
+     * 参加者一覧・受領記録の表示名解決。
+     * キャッシュにいないメンバーは Discord REST API への取得が必要になるが、
+     * 直列に complete() すると人数分の往復時間がそのまま積み上がるため、
+     * 全員分を並列にリクエストしてから待ち合わせる
+     */
     fun resolveDisplayNames(guildId: Long, userIds: Collection<Long>): Map<Long, String> {
         val guild = findGuild(guildId) ?: return userIds.associateWith { "不明なユーザー($it)" }
+        val futures: Map<Long, CompletableFuture<Member?>> = userIds.distinct().associateWith { userId ->
+            guild.getMemberById(userId)?.let { CompletableFuture.completedFuture(it) }
+                ?: guild.retrieveMemberById(userId).submit().exceptionally { null }
+        }
+        CompletableFuture.allOf(*futures.values.toTypedArray()).join()
         return userIds.associateWith { userId ->
-            findMember(guildId, userId)?.effectiveName ?: "不明なユーザー($userId)"
+            futures.getValue(userId).getNow(null)?.effectiveName ?: "不明なユーザー($userId)"
         }
     }
 

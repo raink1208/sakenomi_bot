@@ -174,6 +174,7 @@ Web 固有の**閲覧範囲**(要件 line 82-85):
 | --- | --- | --- |
 | `POST /g/{gid}/events/{eid}/parties` | 飲み会(お店)追加 | 幹事 / 運営 |
 | `POST /g/{gid}/parties/{pid}/edit` | 店名・会計金額の更新 | 幹事 / 運営 |
+| `POST /g/{gid}/parties/{pid}/delete` | 飲み会(お店)の削除(出欠・受領記録も削除) | 幹事 / 運営 |
 | `POST /g/{gid}/parties/{pid}/payments` | 受領記録の追加 | 幹事 / 運営 |
 
 ### 5.5 マイページ・設定
