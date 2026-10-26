@@ -133,7 +133,10 @@ fun startWebServer(
                 gateway, settingsService, eventService, participantService, partyService, paymentService, attendanceService,
                 guestService, rosterService,
             )
-            partyPaymentRoutes(gateway, settingsService, eventService, partyService, paymentService, attendanceService, partyRepository)
+            partyPaymentRoutes(
+                gateway, settingsService, eventService, partyService, paymentService, attendanceService, partyRepository,
+                rosterService, guestService,
+            )
             myPageRoutes(gateway, settingsService, eventService, participantService, partyService, paymentRepository)
             settingsRoutes(gateway, settingsService, eventRepository)
         }

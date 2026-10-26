@@ -2,22 +2,32 @@ package com.github.rain1208.sakenomi.web.routes
 
 import com.github.rain1208.sakenomi.discord.DiscordGateway
 import com.github.rain1208.sakenomi.domain.AttendanceStatus
+import com.github.rain1208.sakenomi.domain.ParticipantIds
 import com.github.rain1208.sakenomi.domain.ServiceException
 import com.github.rain1208.sakenomi.repository.PartyRepository
+import com.github.rain1208.sakenomi.service.AttendanceEntry
 import com.github.rain1208.sakenomi.service.AttendanceService
 import com.github.rain1208.sakenomi.service.EventService
+import com.github.rain1208.sakenomi.service.GuestService
 import com.github.rain1208.sakenomi.service.PartyService
 import com.github.rain1208.sakenomi.service.PaymentService
+import com.github.rain1208.sakenomi.service.RosterService
 import com.github.rain1208.sakenomi.service.SettingsService
 import com.github.rain1208.sakenomi.util.Permissions
 import com.github.rain1208.sakenomi.web.auth.requireGuildContext
+import com.github.rain1208.sakenomi.web.viewmodel.ViewModels
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.freemarker.FreeMarkerContent
 import io.ktor.server.request.receiveParameters
+import io.ktor.server.response.respond
 import io.ktor.server.response.respondRedirect
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
+import java.text.Collator
+import java.util.Locale
 
 /** 飲み会・支払・出欠ルーティング(Web仕様書.md §5.4) */
 fun Route.partyPaymentRoutes(
@@ -28,6 +38,8 @@ fun Route.partyPaymentRoutes(
     paymentService: PaymentService,
     attendanceService: AttendanceService,
     partyRepository: PartyRepository,
+    rosterService: RosterService,
+    guestService: GuestService,
 ) {
     route("/g/{guildId}/parties/{partyId}") {
         post("/edit") {
@@ -116,6 +128,87 @@ fun Route.partyPaymentRoutes(
                 }
             }
             call.respondRedirect("/g/${ctx.guild.idLong}/events/${event.id}")
+        }
+
+        // 人数が多いイベント向けの出席登録専用ページ。出席 / 未登録の2状態だけを扱い、受領金額はイベント詳細で登録する
+        get("/check-in") {
+            val ctx = requireGuildContext(gateway, settingsService) ?: return@get
+            val partyId = call.parameters["partyId"]?.toLongOrNull()
+            val party = partyId?.let { partyRepository.findById(it) }
+            val event = party?.let { eventService.findById(it.eventId) }
+            if (party == null || event == null || event.guildId != ctx.guild.idLong) {
+                call.respondText("お店情報が見つかりません", status = HttpStatusCode.NotFound)
+                return@get
+            }
+            if (!Permissions.isOrganizerOrAdmin(ctx.member, ctx.settings, event)) {
+                call.respondText("出席登録の権限がありません", status = HttpStatusCode.Forbidden)
+                return@get
+            }
+
+            val entries = attendanceService.list(event, party.orderNo).single().entries
+            val guestNames = guestService.listActive(event).associate { it.participantId to it.name }
+            val memberNames = rosterService.resolveDisplayNames(
+                ctx.guild.idLong,
+                event.id,
+                entries.map { it.userId }.filterNot { ParticipantIds.isGuest(it) },
+            )
+            val nameOf = { userId: Long -> guestNames[userId] ?: memberNames[userId] ?: userId.toString() }
+            // 人数が多くても探しやすいよう、幹事 → メンバー → ゲストの順に、それぞれ名前順で並べる
+            val collator = Collator.getInstance(Locale.JAPANESE)
+            val people = entries
+                .sortedWith(
+                    compareBy<AttendanceEntry>({ it.userId != event.organizerUserId }, { ParticipantIds.isGuest(it.userId) })
+                        .thenBy(collator) { nameOf(it.userId) },
+                )
+                .map { entry ->
+                    mapOf(
+                        "id" to entry.userId,
+                        "name" to nameOf(entry.userId),
+                        "isOrganizer" to (entry.userId == event.organizerUserId),
+                        "isGuest" to ParticipantIds.isGuest(entry.userId),
+                        "present" to (entry.status == AttendanceStatus.PRESENT),
+                    )
+                }
+
+            call.respond(
+                FreeMarkerContent(
+                    "party-check-in.ftl",
+                    mapOf(
+                        "session" to ctx.session,
+                        "guildId" to ctx.guild.idLong,
+                        "isAdmin" to ctx.isAdmin,
+                        "event" to ViewModels.event(event),
+                        "party" to ViewModels.party(party),
+                        "parties" to partyService.list(event).map { ViewModels.party(it) },
+                        "people" to people,
+                        "presentCount" to entries.count { it.status == AttendanceStatus.PRESENT },
+                        "saved" to (call.request.queryParameters["saved"] != null),
+                    ),
+                ),
+            )
+        }
+
+        post("/check-in") {
+            val ctx = requireGuildContext(gateway, settingsService) ?: return@post
+            val partyId = call.parameters["partyId"]?.toLongOrNull()
+            val party = partyId?.let { partyRepository.findById(it) }
+            val event = party?.let { eventService.findById(it.eventId) }
+            if (party == null || event == null || event.guildId != ctx.guild.idLong) {
+                call.respondText("お店情報が見つかりません", status = HttpStatusCode.NotFound)
+                return@post
+            }
+            if (!Permissions.isOrganizerOrAdmin(ctx.member, ctx.settings, event)) {
+                call.respondText("出席登録の権限がありません", status = HttpStatusCode.Forbidden)
+                return@post
+            }
+            val params = call.receiveParameters()
+            val before = params.getAll("wasPresent").orEmpty().mapNotNull { it.toLongOrNull() }.toSet()
+            val after = params.getAll("present").orEmpty().mapNotNull { it.toLongOrNull() }.toSet()
+            // 画面を開いてから変更した人だけを反映する。触っていない人の欠席記録や、
+            // 他の幹事が同時に付けた出欠を一括で上書きしないため
+            val statuses = (after - before).associateWith { "PRESENT" } + (before - after).associateWith { "CLEAR" }
+            attendanceService.setAll(event, party.orderNo, statuses, ctx.session.userId)
+            call.respondRedirect("/g/${ctx.guild.idLong}/parties/${party.id}/check-in?saved=1")
         }
 
         post("/attendance-payments") {

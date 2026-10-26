@@ -160,7 +160,12 @@
   <#else>
     <#list parties as party>
       <div class="party-card" id="party-${party.id?c}">
-        <h3>${party.orderNo}軒目: ${party.shopName}</h3>
+        <div class="party-card-head">
+          <h3>${party.orderNo}軒目: ${party.shopName}</h3>
+          <#if canManage && party.attendance?size gt 0>
+            <a class="button secondary small" href="/g/${guildId?c}/parties/${party.id?c}/check-in">出席登録</a>
+          </#if>
+        </div>
         <p>
           会計金額: ${party.totalAmountText}
           <#if party.receivedTotalText??> / 受領合計: ${party.receivedTotalText}</#if>
