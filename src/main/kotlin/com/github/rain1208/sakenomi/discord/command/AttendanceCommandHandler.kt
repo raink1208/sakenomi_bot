@@ -5,6 +5,7 @@ import com.github.rain1208.sakenomi.domain.ServiceException
 import com.github.rain1208.sakenomi.service.AttendanceService
 import com.github.rain1208.sakenomi.service.EventService
 import com.github.rain1208.sakenomi.service.ParticipantService
+import com.github.rain1208.sakenomi.service.RosterService
 import com.github.rain1208.sakenomi.service.SettingsService
 import com.github.rain1208.sakenomi.util.Permissions
 import net.dv8tion.jda.api.EmbedBuilder
@@ -15,6 +16,7 @@ class AttendanceCommandHandler(
     private val attendanceService: AttendanceService,
     private val participantService: ParticipantService,
     private val settingsService: SettingsService,
+    private val rosterService: RosterService,
 ) {
 
     fun handle(event: SlashCommandInteractionEvent) {
@@ -61,6 +63,7 @@ class AttendanceCommandHandler(
             return
         }
 
+        val guestLabels = rosterService.guestLabels(target.id)
         val builder = EmbedBuilder()
             .setTitle("📋 第${target.number}回 ${target.name} の出欠")
             .setColor(0x3498DB)
@@ -71,7 +74,7 @@ class AttendanceCommandHandler(
                     AttendanceStatus.ABSENT -> "❌"
                     null -> "❔"
                 }
-                "$mark <@${entry.userId}>"
+                "$mark ${guestLabels[entry.userId] ?: "<@${entry.userId}>"}"
             }
             val summary = "出席 ${result.presentCount} / 欠席 ${result.absentCount} / 未確認 ${result.unconfirmedCount}"
             builder.addField(

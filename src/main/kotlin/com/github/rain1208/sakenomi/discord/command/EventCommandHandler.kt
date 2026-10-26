@@ -2,11 +2,13 @@ package com.github.rain1208.sakenomi.discord.command
 
 import com.github.rain1208.sakenomi.domain.ServiceException
 import com.github.rain1208.sakenomi.service.EventService
+import com.github.rain1208.sakenomi.service.GuestService
 import com.github.rain1208.sakenomi.service.ParticipantService
 import com.github.rain1208.sakenomi.service.SettingsService
 import com.github.rain1208.sakenomi.util.EventEmbeds
 import com.github.rain1208.sakenomi.util.Permissions
 import net.dv8tion.jda.api.EmbedBuilder
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
 import net.dv8tion.jda.api.interactions.components.buttons.Button
 import java.time.LocalDate
@@ -16,6 +18,7 @@ class EventCommandHandler(
     private val eventService: EventService,
     private val settingsService: SettingsService,
     private val participantService: ParticipantService,
+    private val guestService: GuestService,
 ) {
 
     fun handle(event: SlashCommandInteractionEvent) {
@@ -30,7 +33,24 @@ class EventCommandHandler(
             "renumber" -> renumber(event)
             "add-user" -> addUser(event)
             "remove-user" -> removeUser(event)
+            "add-guest" -> addGuest(event)
+            "remove-guest" -> removeGuest(event)
         }
+    }
+
+    /** `/event remove-guest` の name 補完。実行チャンネルのイベントのゲスト名を候補に出す */
+    fun autoComplete(event: CommandAutoCompleteInteractionEvent) {
+        if (event.subcommandName != "remove-guest" || event.focusedOption.name != "name") {
+            event.replyChoices(emptyList()).queue({}, {})
+            return
+        }
+        val target = runCatching { eventService.resolveByChannel(event.guild!!, event.channel.idLong) }.getOrNull()
+        val query = event.focusedOption.value.trim()
+        val names = target?.let { guestService.listActive(it) }.orEmpty()
+            .map { it.name }
+            .filter { query.isEmpty() || it.contains(query, ignoreCase = true) }
+            .take(MAX_AUTOCOMPLETE_CHOICES)
+        event.replyChoiceStrings(names).queue({}, {})
     }
 
     private fun create(event: SlashCommandInteractionEvent) {
@@ -199,6 +219,38 @@ class EventCommandHandler(
         ).setEphemeral(true).queue()
     }
 
+    private fun addGuest(event: SlashCommandInteractionEvent) {
+        val guild = event.guild!!
+        val target = eventService.resolveByChannel(guild, event.channel.idLong)
+        val settings = settingsService.get(guild.idLong)
+        if (!Permissions.isOrganizerOrAdmin(event.member!!, settings, target)) {
+            throw ServiceException("ゲストの追加は幹事または運営のみ実行できます")
+        }
+
+        val name = event.getOption("name")!!.asString
+        val result = guestService.add(guild, event.member!!, target, name)
+        val restoredNote = if (result.restored) "(以前の出欠・受領記録を復元しました)" else ""
+        event.reply(
+            "✅ **${result.guest.displayName}** を **第${target.number}回 ${target.name}** に追加しました$restoredNote",
+        ).setEphemeral(true).queue()
+    }
+
+    private fun removeGuest(event: SlashCommandInteractionEvent) {
+        val guild = event.guild!!
+        val target = eventService.resolveByChannel(guild, event.channel.idLong)
+        val settings = settingsService.get(guild.idLong)
+        if (!Permissions.isOrganizerOrAdmin(event.member!!, settings, target)) {
+            throw ServiceException("ゲストの削除は幹事または運営のみ実行できます")
+        }
+
+        val guest = guestService.findActiveByName(target, event.getOption("name")!!.asString)
+        guestService.remove(guild, event.member!!, target, guest)
+        event.reply(
+            "✅ **${guest.displayName}** を **第${target.number}回 ${target.name}** から削除しました\n" +
+                "出欠・受領記録は残っており、同じ名前で再追加すると元に戻ります",
+        ).setEphemeral(true).queue()
+    }
+
     private fun parseDate(value: String?): LocalDate? {
         if (value == null) return null
         return try {
@@ -206,5 +258,10 @@ class EventCommandHandler(
         } catch (e: DateTimeParseException) {
             throw ServiceException("日付は `YYYY-MM-DD` 形式で指定してください(例: 2026-08-01)")
         }
+    }
+
+    companion object {
+        /** Discord のオートコンプリート候補の上限 */
+        private const val MAX_AUTOCOMPLETE_CHOICES = 25
     }
 }

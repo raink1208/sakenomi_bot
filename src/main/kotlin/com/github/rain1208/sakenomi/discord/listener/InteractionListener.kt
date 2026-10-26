@@ -7,6 +7,7 @@ import com.github.rain1208.sakenomi.discord.command.PartyCommandHandler
 import com.github.rain1208.sakenomi.discord.command.PaymentCommandHandler
 import com.github.rain1208.sakenomi.discord.command.SettingsCommandHandler
 import com.github.rain1208.sakenomi.domain.ServiceException
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
 import net.dv8tion.jda.api.events.session.ReadyEvent
@@ -42,6 +43,20 @@ class InteractionListener(
                 "payment" -> paymentHandler.handle(event)
                 "attendance" -> attendanceHandler.handle(event)
             }
+        }
+    }
+
+    override fun onCommandAutoCompleteInteraction(event: CommandAutoCompleteInteractionEvent) {
+        if (event.guild == null || event.member == null) return
+        try {
+            when (event.name) {
+                "event" -> eventHandler.autoComplete(event)
+                else -> event.replyChoices(emptyList()).queue({}, {})
+            }
+        } catch (e: Exception) {
+            // 補完の失敗は候補なしとして扱う(コマンド実行時に改めて検証される)
+            logger.warn("オートコンプリート処理中にエラーが発生しました", e)
+            event.replyChoices(emptyList()).queue({}, {})
         }
     }
 

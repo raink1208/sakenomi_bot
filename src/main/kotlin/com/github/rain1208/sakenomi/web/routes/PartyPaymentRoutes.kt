@@ -143,7 +143,9 @@ fun Route.partyPaymentRoutes(
                 .filter { it.startsWith("amount_") }
                 .mapNotNull { key ->
                     val userId = key.removePrefix("amount_").toLongOrNull() ?: return@mapNotNull null
-                    val amount = params[key]?.takeIf { it.isNotBlank() }?.toLongOrNull() ?: return@mapNotNull null
+                    // 空欄は受領記録の削除として 0 扱い
+                    val value = params[key]?.trim() ?: return@mapNotNull null
+                    val amount = if (value.isEmpty()) 0L else value.toLongOrNull() ?: return@mapNotNull null
                     userId to amount
                 }.toMap()
             attendanceService.setAll(event, party.orderNo, statuses, ctx.session.userId)

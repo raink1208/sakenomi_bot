@@ -72,6 +72,33 @@ data class Payment(
     val receivedAt: OffsetDateTime,
 )
 
+/** イベント単位のゲスト(Discord 未所持の参加者)。幹事/運営が代理で登録する */
+data class Guest(
+    val id: Long,
+    val eventId: Long,
+    val name: String,
+    val deletedAt: OffsetDateTime?,
+) {
+    /** attendances.user_id / payments.payer_user_id に格納する疑似 ID */
+    val participantId: Long
+        get() = ParticipantIds.ofGuest(id)
+
+    val displayName: String
+        get() = "$name (ゲスト)"
+}
+
+/**
+ * 出欠・受領記録の参加者 ID。正の値は Discord ユーザー ID、負の値はゲストの疑似 ID(-event_guests.id)。
+ * Discord のスノーフレークは常に正のため衝突しない。判定はここに集約し、生の比較を散らばらせない
+ */
+object ParticipantIds {
+    fun isGuest(participantId: Long): Boolean = participantId < 0
+
+    fun ofGuest(guestId: Long): Long = -guestId
+
+    fun guestIdOf(participantId: Long): Long = -participantId
+}
+
 enum class AttendanceStatus {
     PRESENT,
     ABSENT,

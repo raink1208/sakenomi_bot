@@ -79,13 +79,38 @@
     </script>
   </#if>
 
-  <#if participants?? && participants?size gt 0>
+  <#if (participants?? && participants?size gt 0) || guests?size gt 0>
     <h2>参加者一覧</h2>
     <ul class="participant-list">
       <#list participants as p>
         <li>${p.name}</li>
       </#list>
+      <#list guests as g>
+        <li>${g.displayName}</li>
+      </#list>
     </ul>
+  </#if>
+
+  <#if canManage>
+    <details class="edit-details" id="edit-guest-details">
+      <summary>ゲストを編集</summary>
+      <p class="field-hint">Discord を使っていない参加者をゲストとして登録できます。削除しても出欠・受領記録は残り、同じ名前で再追加すると元に戻ります。</p>
+      <form method="post" action="/g/${guildId?c}/events/${event.id?c}/guests" class="inline-fields">
+        <input type="text" name="name" placeholder="ゲスト名" required maxlength="80">
+        <button type="submit" class="button secondary">追加</button>
+      </form>
+      <#list guests as g>
+        <div class="inline-fields">
+          <form method="post" action="/g/${guildId?c}/events/${event.id?c}/guests/${g.id?c}/rename" class="inline-fields">
+            <input type="text" name="name" value="${g.name}" required maxlength="80">
+            <button type="submit" class="button secondary">名前を変更</button>
+          </form>
+          <form method="post" action="/g/${guildId?c}/events/${event.id?c}/guests/${g.id?c}/delete" class="inline-form" onsubmit="return confirm('ゲスト「${g.name?js_string}」を削除しますか?');">
+            <button type="submit" class="button danger small">削除</button>
+          </form>
+        </div>
+      </#list>
+    </details>
   </#if>
 
   <#if isAdmin>
@@ -155,24 +180,14 @@
                 <thead>
                   <tr>
                     <th>名前</th>
-                    <th>出欠ステータス</th>
-                    <th>受領金額</th>
                     <th>出欠変更ボタン</th>
-                    <th>受領金額の入力</th>
+                    <th>受領金額</th>
                   </tr>
                 </thead>
                 <tbody>
                   <#list party.attendance as a>
                     <tr>
                       <td data-label="名前" class="primary-cell">${a.name}</td>
-                      <td data-label="出欠ステータス">
-                        <#if !a.status??>❔ 未確認
-                        <#elseif a.status == "PRESENT">✅ 出席
-                        <#elseif a.status == "ABSENT">❌ 欠席
-                        <#else>❔ 未確認
-                        </#if>
-                      </td>
-                      <td data-label="受領金額">${a.receivedAmountText}</td>
                       <td data-label="出欠変更ボタン">
                         <div class="status-toggle-group">
                           <label class="status-toggle status-toggle-present">
@@ -189,10 +204,10 @@
                           </label>
                         </div>
                       </td>
-                      <td data-label="受領金額の入力">
+                      <td data-label="受領金額">
                         <label class="amount-field">
                           <span class="amount-unit">¥</span>
-                          <input type="number" name="amount_${a.userId?c}" min="0" step="100" value="${a.receivedAmount!""}" placeholder="0" inputmode="numeric">
+                          <input type="number" name="amount_${a.userId?c}" min="0" step="100" value="<#if a.receivedAmount??>${a.receivedAmount?c}</#if>" placeholder="0" inputmode="numeric">
                         </label>
                       </td>
                     </tr>
@@ -211,7 +226,7 @@
                 <#list party.attendance as a>
                   <tr>
                     <td data-label="名前" class="primary-cell">${a.name}</td>
-                    <td data-label="出欠ステータス">
+                    <td data-label="出欠ステータス" class="status-cell">
                       <#if !a.status??>❔ 未確認
                       <#elseif a.status == "PRESENT">✅ 出席
                       <#elseif a.status == "ABSENT">❌ 欠席

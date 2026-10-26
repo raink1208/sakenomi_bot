@@ -5,7 +5,6 @@ import com.github.rain1208.sakenomi.domain.Event
 import com.github.rain1208.sakenomi.domain.Party
 import com.github.rain1208.sakenomi.domain.ServiceException
 import com.github.rain1208.sakenomi.repository.AttendanceRepository
-import com.github.rain1208.sakenomi.repository.ParticipantRepository
 
 /** null は未確認を表す */
 data class AttendanceEntry(
@@ -24,13 +23,13 @@ data class PartyAttendances(
 class AttendanceService(
     private val partyService: PartyService,
     private val attendanceRepository: AttendanceRepository,
-    private val participantRepository: ParticipantRepository,
+    private val rosterService: RosterService,
 ) {
 
-    /** 飲み会単位の出欠記録・修正。対象はイベント参加者のみ */
+    /** 飲み会単位の出欠記録・修正。対象はイベント参加者(ゲスト含む)のみ */
     fun set(event: Event, orderNo: Int, targetUserId: Long, status: AttendanceStatus, recordedBy: Long): PartyAttendances {
         val party = partyService.findByOrder(event, orderNo)
-        if (!participantRepository.isParticipant(event.id, targetUserId)) {
+        if (targetUserId !in rosterService.participantIds(event.id)) {
             throw ServiceException("このユーザーはイベントに参加していません")
         }
         attendanceRepository.upsert(party.id, targetUserId, status, recordedBy)
@@ -39,11 +38,11 @@ class AttendanceService(
 
     /**
      * 飲み会単位の出欠を一括更新する。statuses は userId -> "PRESENT"/"ABSENT"/"CLEAR"。
-     * イベント参加者以外のキーは無視する。
+     * イベント参加者(ゲスト含む)以外のキーは無視する。
      */
     fun setAll(event: Event, orderNo: Int, statuses: Map<Long, String>, recordedBy: Long): PartyAttendances {
         val party = partyService.findByOrder(event, orderNo)
-        val participantIds = participantRepository.listUserIdsByEvent(event.id).toSet()
+        val participantIds = rosterService.participantIds(event.id).toSet()
         statuses.filterKeys { it in participantIds }.forEach { (userId, statusParam) ->
             if (statusParam == "CLEAR") {
                 attendanceRepository.delete(party.id, userId)
@@ -58,7 +57,7 @@ class AttendanceService(
     /** 未確認の参加者だけ一括で出席にする(既に記録済みの人は上書きしない) */
     fun markAllPresent(event: Event, orderNo: Int, recordedBy: Long): PartyAttendances {
         val party = partyService.findByOrder(event, orderNo)
-        val participantIds = participantRepository.listUserIdsByEvent(event.id)
+        val participantIds = rosterService.participantIds(event.id)
         val recordedIds = attendanceRepository.listByParty(party.id).map { it.userId }.toSet()
         participantIds.filter { it !in recordedIds }
             .forEach { attendanceRepository.upsert(party.id, it, AttendanceStatus.PRESENT, recordedBy) }
@@ -83,7 +82,7 @@ class AttendanceService(
     }
 
     private fun buildSummary(event: Event, party: Party): PartyAttendances {
-        val participantIds = participantRepository.listUserIdsByEvent(event.id)
+        val participantIds = rosterService.participantIds(event.id)
         val recorded = attendanceRepository.listByParty(party.id).associateBy { it.userId }
         val entries = participantIds.map { AttendanceEntry(it, recorded[it]?.status) }
         return PartyAttendances(

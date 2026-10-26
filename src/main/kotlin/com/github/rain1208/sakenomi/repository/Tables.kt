@@ -50,6 +50,16 @@ object EventParticipantsTable : Table("event_participants") {
     override val primaryKey = PrimaryKey(id)
 }
 
+object EventGuestsTable : Table("event_guests") {
+    val id = long("id").autoIncrement()
+    val eventId = long("event_id")
+    val name = varchar("name", 80)
+    val createdBy = long("created_by")
+    val deletedAt = timestampWithTimeZone("deleted_at").nullable()
+
+    override val primaryKey = PrimaryKey(id)
+}
+
 object PartiesTable : Table("parties") {
     val id = long("id").autoIncrement()
     val eventId = long("event_id")

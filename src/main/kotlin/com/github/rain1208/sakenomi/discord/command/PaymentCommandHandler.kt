@@ -3,6 +3,7 @@ package com.github.rain1208.sakenomi.discord.command
 import com.github.rain1208.sakenomi.domain.ServiceException
 import com.github.rain1208.sakenomi.service.EventService
 import com.github.rain1208.sakenomi.service.PaymentService
+import com.github.rain1208.sakenomi.service.RosterService
 import com.github.rain1208.sakenomi.service.SettingsService
 import com.github.rain1208.sakenomi.util.EventEmbeds
 import com.github.rain1208.sakenomi.util.Permissions
@@ -13,6 +14,7 @@ class PaymentCommandHandler(
     private val eventService: EventService,
     private val paymentService: PaymentService,
     private val settingsService: SettingsService,
+    private val rosterService: RosterService,
 ) {
 
     fun handle(event: SlashCommandInteractionEvent) {
@@ -55,6 +57,7 @@ class PaymentCommandHandler(
             return
         }
 
+        val guestLabels = rosterService.guestLabels(target.id)
         val builder = EmbedBuilder()
             .setTitle("💰 第${target.number}回 ${target.name} の受領記録")
             .setColor(0xF39C12)
@@ -64,7 +67,7 @@ class PaymentCommandHandler(
                     add("受領記録なし")
                 } else {
                     result.payments.forEach { payment ->
-                        add("<@${payment.payerUserId}> ${EventEmbeds.formatYen(payment.amount)}")
+                        add("${guestLabels[payment.payerUserId] ?: "<@${payment.payerUserId}>"} ${EventEmbeds.formatYen(payment.amount)}")
                     }
                 }
                 add("**受領合計: ${EventEmbeds.formatYen(result.total)}**")

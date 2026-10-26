@@ -9,7 +9,8 @@ import com.github.rain1208.sakenomi.util.EventEmbeds
 /** FreeMarker テンプレートへ渡す表示用モデルへの変換 */
 object ViewModels {
 
-    fun event(event: Event, participantCount: Long? = null, organizerName: String? = null): Map<String, Any?> = mapOf(
+    /** participantCount はゲストを含む人数表示(「7人(うちゲスト2人)」) */
+    fun event(event: Event, participantCount: String? = null, organizerName: String? = null): Map<String, Any?> = mapOf(
         "id" to event.id,
         "number" to event.number,
         "name" to event.name,

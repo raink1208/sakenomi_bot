@@ -12,6 +12,7 @@ import net.dv8tion.jda.api.entities.Member
 class ParticipantService(
     private val eventRepository: EventRepository,
     private val participantRepository: ParticipantRepository,
+    private val rosterService: RosterService,
     private val gateway: DiscordGateway,
     private val auditLogger: AuditLogger,
 ) {
@@ -32,11 +33,11 @@ class ParticipantService(
             participantRepository.remove(event.id, member.idLong)
             throw ServiceException("ロール付与に失敗しました。Bot の権限を確認してください")
         }
-        val remaining = participantRepository.countByEvent(event.id)
+        val remaining = rosterService.count(event.id).text
         gateway.sendChannelMessage(
             guild,
             event.channelId,
-            "[参加通知] **${member.effectiveName}** が参加しました(現在の参加者: ${remaining}人)",
+            "[参加通知] **${member.effectiveName}** が参加しました(現在の参加者: $remaining)",
         )
         return event
     }
@@ -54,11 +55,11 @@ class ParticipantService(
             throw ServiceException("このイベントに参加していません")
         }
         gateway.removeRole(guild, member, event.roleId)
-        val remaining = participantRepository.countByEvent(event.id)
+        val remaining = rosterService.count(event.id).text
         gateway.sendChannelMessage(
             guild,
             event.channelId,
-            "[退出通知] **${member.effectiveName}** が退出しました(現在の参加者: ${remaining}人)",
+            "[退出通知] **${member.effectiveName}** が退出しました(現在の参加者: $remaining)",
         )
         return event
     }
@@ -78,11 +79,11 @@ class ParticipantService(
             participantRepository.remove(event.id, targetUserId)
             throw ServiceException("ロール付与に失敗しました。Bot の権限を確認してください")
         }
-        val remaining = participantRepository.countByEvent(event.id)
+        val remaining = rosterService.count(event.id).text
         gateway.sendChannelMessage(
             guild,
             event.channelId,
-            "[参加通知] **${targetMember.effectiveName}** が参加しました(現在の参加者: ${remaining}人)",
+            "[参加通知] **${targetMember.effectiveName}** が参加しました(現在の参加者: $remaining)",
         )
         auditLogger.participantAdded(guild, event, targetMember, executor)
         return event
@@ -100,11 +101,11 @@ class ParticipantService(
         val targetMember = gateway.findMember(guild.idLong, targetUserId)
         targetMember?.let { gateway.removeRole(guild, it, event.roleId) }
         val displayName = targetMember?.effectiveName ?: "不明なユーザー($targetUserId)"
-        val remaining = participantRepository.countByEvent(event.id)
+        val remaining = rosterService.count(event.id).text
         gateway.sendChannelMessage(
             guild,
             event.channelId,
-            "[退出通知] **$displayName** が退出しました(現在の参加者: ${remaining}人)",
+            "[退出通知] **$displayName** が退出しました(現在の参加者: $remaining)",
         )
         auditLogger.participantRemoved(guild, event, targetUserId, executor)
         return event
@@ -113,9 +114,10 @@ class ParticipantService(
     fun isParticipant(eventId: Long, userId: Long): Boolean =
         participantRepository.isParticipant(eventId, userId)
 
-    fun count(eventId: Long): Long = participantRepository.countByEvent(eventId)
+    /** ゲストを含む参加人数 */
+    fun count(eventId: Long): RosterCount = rosterService.count(eventId)
 
-    /** Web コンソールの参加者一覧・支払者選択用 */
+    /** Web コンソールの参加者一覧・支払者選択用(Discord メンバーのみ。ゲストは GuestService) */
     fun listUserIds(eventId: Long): List<Long> = participantRepository.listUserIdsByEvent(eventId)
 
     /** マイページ用: ユーザーが参加しているイベント ID 一覧 */

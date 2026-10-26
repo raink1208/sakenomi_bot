@@ -6,9 +6,11 @@ import com.github.rain1208.sakenomi.domain.EventStatus
 import com.github.rain1208.sakenomi.domain.ServiceException
 import com.github.rain1208.sakenomi.service.AttendanceService
 import com.github.rain1208.sakenomi.service.EventService
+import com.github.rain1208.sakenomi.service.GuestService
 import com.github.rain1208.sakenomi.service.ParticipantService
 import com.github.rain1208.sakenomi.service.PartyService
 import com.github.rain1208.sakenomi.service.PaymentService
+import com.github.rain1208.sakenomi.service.RosterService
 import com.github.rain1208.sakenomi.service.SettingsService
 import com.github.rain1208.sakenomi.util.Permissions
 import com.github.rain1208.sakenomi.web.auth.GuildContext
@@ -36,6 +38,8 @@ fun Route.eventRoutes(
     partyService: PartyService,
     paymentService: PaymentService,
     attendanceService: AttendanceService,
+    guestService: GuestService,
+    rosterService: RosterService,
 ) {
     route("/g/{guildId}/events") {
         get {
@@ -48,7 +52,7 @@ fun Route.eventRoutes(
                 .map { event ->
                     ViewModels.event(
                         event,
-                        participantCount = participantService.count(event.id),
+                        participantCount = participantService.count(event.id).text,
                         organizerName = gateway.resolveDisplayNames(ctx.guild.idLong, listOf(event.organizerUserId))[event.organizerUserId],
                     )
                 }
@@ -127,9 +131,11 @@ fun Route.eventRoutes(
                 val canManage = Permissions.isOrganizerOrAdmin(ctx.member, ctx.settings, event)
                 val isParticipant = participantService.isParticipant(event.id, ctx.session.userId)
                 val participantIds = participantService.listUserIds(event.id)
+                val guests = guestService.listActive(event)
                 val userIds = participantIds.toMutableSet()
                 userIds.add(event.organizerUserId)
-                val names = gateway.resolveDisplayNames(ctx.guild.idLong, userIds)
+                guests.forEach { userIds.add(it.participantId) }
+                val names = rosterService.resolveDisplayNames(ctx.guild.idLong, event.id, userIds)
 
                 call.respond(
                     FreeMarkerContent(
@@ -137,7 +143,7 @@ fun Route.eventRoutes(
                         mapOf(
                             "session" to ctx.session,
                             "guildId" to ctx.guild.idLong,
-                            "event" to ViewModels.event(event, participantService.count(event.id), names[event.organizerUserId]),
+                            "event" to ViewModels.event(event, participantService.count(event.id).text, names[event.organizerUserId]),
                             "canManage" to canManage,
                             "isAdmin" to ctx.isAdmin,
                             "isOrganizer" to (event.organizerUserId == ctx.session.userId),
@@ -149,6 +155,7 @@ fun Route.eventRoutes(
                                     "isOrganizer" to (it == event.organizerUserId),
                                 )
                             },
+                            "guests" to guests.map { mapOf("id" to it.id, "name" to it.name, "displayName" to it.displayName) },
                             "parties" to payments.map { pp ->
                                 val paymentsByUser = pp.payments.associateBy { it.payerUserId }
                                 ViewModels.party(pp.party, pp.total) + mapOf(
@@ -386,6 +393,47 @@ fun Route.eventRoutes(
                 val userId = call.receiveParameters()["userId"]?.toLongOrNull()
                     ?: throw ServiceException("削除するユーザーを指定してください")
                 participantService.adminRemove(ctx.guild, ctx.member, userId, event.id)
+                call.respondRedirect("/g/${ctx.guild.idLong}/events/${event.id}")
+            }
+
+            post("/guests") {
+                val ctx = requireGuildContext(gateway, settingsService) ?: return@post
+                val event = resolveEvent(eventService, ctx.guild.idLong) ?: return@post
+                if (!Permissions.isOrganizerOrAdmin(ctx.member, ctx.settings, event)) {
+                    call.respondText("ゲストの追加は幹事または運営のみ実行できます", status = HttpStatusCode.Forbidden)
+                    return@post
+                }
+                val name = call.receiveParameters()["name"].orEmpty()
+                guestService.add(ctx.guild, ctx.member, event, name)
+                call.respondRedirect("/g/${ctx.guild.idLong}/events/${event.id}")
+            }
+
+            post("/guests/{guestId}/rename") {
+                val ctx = requireGuildContext(gateway, settingsService) ?: return@post
+                val event = resolveEvent(eventService, ctx.guild.idLong) ?: return@post
+                if (!Permissions.isOrganizerOrAdmin(ctx.member, ctx.settings, event)) {
+                    call.respondText("ゲスト名の変更は幹事または運営のみ実行できます", status = HttpStatusCode.Forbidden)
+                    return@post
+                }
+                val guestId = call.parameters["guestId"]?.toLongOrNull()
+                    ?: throw ServiceException("ゲストが見つかりません")
+                val guest = guestService.findActiveById(event, guestId)
+                val name = call.receiveParameters()["name"].orEmpty()
+                guestService.rename(ctx.guild, ctx.member, event, guest, name)
+                call.respondRedirect("/g/${ctx.guild.idLong}/events/${event.id}")
+            }
+
+            post("/guests/{guestId}/delete") {
+                val ctx = requireGuildContext(gateway, settingsService) ?: return@post
+                val event = resolveEvent(eventService, ctx.guild.idLong) ?: return@post
+                if (!Permissions.isOrganizerOrAdmin(ctx.member, ctx.settings, event)) {
+                    call.respondText("ゲストの削除は幹事または運営のみ実行できます", status = HttpStatusCode.Forbidden)
+                    return@post
+                }
+                val guestId = call.parameters["guestId"]?.toLongOrNull()
+                    ?: throw ServiceException("ゲストが見つかりません")
+                val guest = guestService.findActiveById(event, guestId)
+                guestService.remove(ctx.guild, ctx.member, event, guest)
                 call.respondRedirect("/g/${ctx.guild.idLong}/events/${event.id}")
             }
 

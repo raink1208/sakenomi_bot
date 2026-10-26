@@ -560,6 +560,19 @@ tbody tr:hover { background: var(--color-surface-alt); }
   .primary-cell::before { content: none; }
   .primary-cell a { display: block; padding: 2px 0; }
 
+  /* 出欠カードは名前と出欠ステータスを1行目に横並びにして縦幅を詰める */
+  .attendance-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 12px;
+    align-items: center;
+  }
+  .attendance-table td { grid-column: 1 / -1; }
+  .attendance-table td.primary-cell { grid-column: 1; overflow-wrap: anywhere; }
+  .attendance-table td.status-cell { grid-column: 2; padding-top: 0; text-align: right; white-space: nowrap; }
+  .attendance-table td.primary-cell::before,
+  .attendance-table td.status-cell::before { content: none; }
+
   /* タップ操作しやすいよう主要な操作要素の当たり判定を広げる */
   .button { padding: 12px 20px; font-size: 1rem; }
   .button.small { padding: 8px 14px; font-size: 0.85rem; }

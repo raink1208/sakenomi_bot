@@ -1,6 +1,7 @@
 package com.github.rain1208.sakenomi.service
 
 import com.github.rain1208.sakenomi.domain.Event
+import com.github.rain1208.sakenomi.domain.Guest
 import com.github.rain1208.sakenomi.repository.GuildSettingsRepository
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.entities.Guild
@@ -91,6 +92,48 @@ class AuditLogger(
                 .addField("対象ユーザー", "<@$targetUserId>", true)
                 .addField("実行者", executor.asMention, true)
                 .setColor(0xE74C3C)
+                .setTimestamp(Instant.now())
+                .build(),
+        )
+    }
+
+    fun guestAdded(guild: Guild, event: Event, guest: Guest, executor: Member, restored: Boolean) {
+        send(
+            guild,
+            EmbedBuilder()
+                .setTitle(if (restored) "➕ ゲスト追加(復元)" else "➕ ゲスト追加")
+                .addField("イベント", "第${event.number}回 ${event.name}", false)
+                .addField("ゲスト", guest.name, true)
+                .addField("実行者", executor.asMention, true)
+                .setColor(0x2ECC71)
+                .setTimestamp(Instant.now())
+                .build(),
+        )
+    }
+
+    fun guestRemoved(guild: Guild, event: Event, guest: Guest, executor: Member) {
+        send(
+            guild,
+            EmbedBuilder()
+                .setTitle("➖ ゲスト削除")
+                .addField("イベント", "第${event.number}回 ${event.name}", false)
+                .addField("ゲスト", guest.name, true)
+                .addField("実行者", executor.asMention, true)
+                .setColor(0xE74C3C)
+                .setTimestamp(Instant.now())
+                .build(),
+        )
+    }
+
+    fun guestRenamed(guild: Guild, event: Event, oldName: String, guest: Guest, executor: Member) {
+        send(
+            guild,
+            EmbedBuilder()
+                .setTitle("✏️ ゲスト名変更")
+                .addField("イベント", "第${event.number}回 ${event.name}", false)
+                .addField("名前", "$oldName → ${guest.name}", true)
+                .addField("実行者", executor.asMention, true)
+                .setColor(0x3498DB)
                 .setTimestamp(Instant.now())
                 .build(),
         )

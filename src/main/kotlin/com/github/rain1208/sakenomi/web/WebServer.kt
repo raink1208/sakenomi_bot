@@ -8,9 +8,11 @@ import com.github.rain1208.sakenomi.repository.PartyRepository
 import com.github.rain1208.sakenomi.repository.PaymentRepository
 import com.github.rain1208.sakenomi.service.AttendanceService
 import com.github.rain1208.sakenomi.service.EventService
+import com.github.rain1208.sakenomi.service.GuestService
 import com.github.rain1208.sakenomi.service.ParticipantService
 import com.github.rain1208.sakenomi.service.PartyService
 import com.github.rain1208.sakenomi.service.PaymentService
+import com.github.rain1208.sakenomi.service.RosterService
 import com.github.rain1208.sakenomi.service.SettingsService
 import com.github.rain1208.sakenomi.web.auth.DiscordOAuthClient
 import com.github.rain1208.sakenomi.web.auth.UserSession
@@ -56,6 +58,8 @@ fun startWebServer(
     partyService: PartyService,
     paymentService: PaymentService,
     attendanceService: AttendanceService,
+    guestService: GuestService,
+    rosterService: RosterService,
     partyRepository: PartyRepository,
     paymentRepository: PaymentRepository,
     eventRepository: EventRepository,
@@ -125,7 +129,10 @@ fun startWebServer(
             staticResources("/static", "static")
             authRoutes(oauthClient)
             guildRoutes(gateway)
-            eventRoutes(gateway, settingsService, eventService, participantService, partyService, paymentService, attendanceService)
+            eventRoutes(
+                gateway, settingsService, eventService, participantService, partyService, paymentService, attendanceService,
+                guestService, rosterService,
+            )
             partyPaymentRoutes(gateway, settingsService, eventService, partyService, paymentService, attendanceService, partyRepository)
             myPageRoutes(gateway, settingsService, eventService, participantService, partyService, paymentRepository)
             settingsRoutes(gateway, settingsService, eventRepository)

@@ -5,8 +5,8 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import java.time.OffsetDateTime
@@ -26,18 +26,17 @@ class PaymentRepository {
         }
     }
 
+    fun delete(partyId: Long, payerUserId: Long) {
+        transaction {
+            PaymentsTable.deleteWhere { (PaymentsTable.partyId eq partyId) and (PaymentsTable.payerUserId eq payerUserId) }
+        }
+    }
+
     fun listByParty(partyId: Long): List<Payment> = transaction {
         PaymentsTable.selectAll()
             .where { PaymentsTable.partyId eq partyId }
             .orderBy(PaymentsTable.receivedAt)
             .map { it.toPayment() }
-    }
-
-    fun totalByParty(partyId: Long): Long = transaction {
-        val sumAmount = PaymentsTable.amount.sum()
-        PaymentsTable.select(sumAmount)
-            .where { PaymentsTable.partyId eq partyId }
-            .first()[sumAmount] ?: 0L
     }
 
     /** マイページ用: 指定パーティ群における自分の受領記録(支払記録) */

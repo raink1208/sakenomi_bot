@@ -71,6 +71,14 @@ object CommandRegistry {
                 .addOptions(
                     OptionData(OptionType.USER, "user", "削除するユーザー", true),
                 ),
+            SubcommandData("add-guest", "Discord を使っていない参加者をゲストとして追加します(幹事/運営・イベントチャンネル内で実行)")
+                .addOptions(
+                    OptionData(OptionType.STRING, "name", "ゲスト名(イベント内で重複不可)", true).setRequiredLength(1, 80),
+                ),
+            SubcommandData("remove-guest", "ゲストを削除します(幹事/運営・イベントチャンネル内で実行)")
+                .addOptions(
+                    OptionData(OptionType.STRING, "name", "削除するゲスト名", true).setAutoComplete(true),
+                ),
         )
 
     private fun party() = Commands.slash("party", "飲み会(お店)を管理します(イベントチャンネル内で実行)")
