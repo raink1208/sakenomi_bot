@@ -20,6 +20,8 @@ import com.github.rain1208.sakenomi.service.SettingsService
 import com.github.rain1208.sakenomi.web.startWebServer
 import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.requests.GatewayIntent
+import net.dv8tion.jda.api.utils.ChunkingFilter
+import net.dv8tion.jda.api.utils.MemberCachePolicy
 import org.koin.core.context.GlobalContext.startKoin
 import org.slf4j.LoggerFactory
 
@@ -38,7 +40,12 @@ fun main() {
     }.koin
 
     // Web コンソールの参加者追加(ギルドメンバー一覧取得)に GUILD_MEMBERS が必要(Discord Developer Portal で特権インテントの有効化が必須)
+    // createLight はメンバーをキャッシュしないため、Web の各リクエストで Discord REST API への
+    // メンバー取得が発生しレート制限待ちでページ表示が数秒遅れていた。起動時に全メンバーを
+    // チャンク取得してキャッシュし、以後はゲートウェイイベントで最新状態に保つ
     val jda = JDABuilder.createLight(config.discordToken, GatewayIntent.GUILD_MEMBERS)
+        .setMemberCachePolicy(MemberCachePolicy.ALL)
+        .setChunkingFilter(ChunkingFilter.ALL)
         .addEventListeners(koin.get<InteractionListener>())
         .build()
 
