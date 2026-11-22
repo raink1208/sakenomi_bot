@@ -176,6 +176,7 @@ fun Route.partyPaymentRoutes(
                     mapOf(
                         "session" to ctx.session,
                         "guildId" to ctx.guild.idLong,
+                        "guildName" to ctx.guild.name,
                         "isAdmin" to ctx.isAdmin,
                         "event" to ViewModels.event(event),
                         "party" to ViewModels.party(party),

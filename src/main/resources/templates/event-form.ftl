@@ -1,4 +1,10 @@
+<#assign nav = "events">
 <#include "_header.ftl">
+<#if mode == "create">
+  <a class="back-link" href="/g/${guildId?c}/events"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>イベント一覧</a>
+<#else>
+  <a class="back-link" href="/g/${guildId?c}/events/${eventId?c}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>イベントに戻る</a>
+</#if>
 <section class="form-card">
   <h1><#if mode == "create">イベント作成<#else>イベント編集</#if></h1>
   <#if error??>

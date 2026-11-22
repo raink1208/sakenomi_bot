@@ -78,6 +78,7 @@ private fun settingsModel(
 ): Map<String, Any?> = mapOf(
     "session" to session,
     "guildId" to guildId,
+    "guildName" to gateway.findGuild(guildId)?.name,
     "isAdmin" to true,
     "message" to message,
     "categories" to gateway.listCategories(guildId).map { mapOf("id" to it.idLong, "name" to it.name) },

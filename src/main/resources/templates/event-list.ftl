@@ -1,41 +1,64 @@
+<#assign nav = "events">
+<#assign tabbar = true>
 <#include "_header.ftl">
 <section>
   <div class="page-head">
-    <h1>イベント一覧</h1>
-    <a class="button" href="/g/${guildId?c}/events/new">＋ イベント作成</a>
+    <div>
+      <h1>イベント</h1>
+      <p class="page-sub">参加したいイベントを選んで、参加ボタンを押してください。</p>
+    </div>
+    <a class="button" href="/g/${guildId?c}/events/new">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      イベントを作成
+    </a>
   </div>
-  <div class="tabs">
-    <a class="tab <#if status == 'recruiting'>active</#if>" href="/g/${guildId?c}/events?status=recruiting">募集中</a>
-    <a class="tab <#if status == 'archived'>active</#if>" href="/g/${guildId?c}/events?status=archived">アーカイブ</a>
-  </div>
+
+  <nav class="segmented page-tabs" aria-label="イベントの状態">
+    <a class="segmented-item" href="/g/${guildId?c}/events?status=recruiting"<#if status == 'recruiting'> aria-current="page"</#if>>募集中</a>
+    <a class="segmented-item" href="/g/${guildId?c}/events?status=archived"<#if status == 'archived'> aria-current="page"</#if>>アーカイブ</a>
+  </nav>
 
   <#if events?size == 0>
     <p class="empty">イベントがありません。</p>
   <#else>
-    <table class="event-table">
-      <thead>
-        <tr>
-          <th>第n回</th>
-          <th>名前</th>
-          <th>エリア</th>
-          <th>開催日</th>
-          <th>幹事</th>
-          <th>参加人数</th>
-        </tr>
-      </thead>
-      <tbody>
-        <#list events as event>
-          <tr>
-            <td data-label="第n回">第${event.number}回</td>
-            <td data-label="名前" class="primary-cell"><a href="/g/${guildId?c}/events/${event.id?c}">${event.name}</a></td>
-            <td data-label="エリア">${event.area}</td>
-            <td data-label="開催日">${event.date}</td>
-            <td data-label="幹事">${event.organizerName}</td>
-            <td data-label="参加人数">${event.participantCount!""}</td>
-          </tr>
-        </#list>
-      </tbody>
-    </table>
+    <ul class="event-list">
+      <#list events as event>
+        <li>
+          <a class="event-row<#if !event.isRecruiting> is-archived</#if>" href="/g/${guildId?c}/events/${event.id?c}">
+            <span class="date-block" aria-hidden="true">
+              <#if event.dateDay??>
+                <span class="date-block-month">${event.dateMonth}月</span>
+                <span class="date-block-day">${event.dateDay}</span>
+                <span class="date-block-dow">${event.dateWeekday}</span>
+              <#else>
+                <span class="date-block-tbd">未定</span>
+              </#if>
+            </span>
+            <span class="event-row-body">
+              <span class="event-row-number">第${event.number}回<#if !event.isRecruiting> <span class="badge badge-archive">アーカイブ済</span></#if></span>
+              <span class="event-row-name">${event.name}</span>
+              <span class="event-row-meta">
+                <span class="sr-only">開催日 ${event.dateLabel!"未定"}</span>
+                <span class="meta-item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+                  ${event.area}
+                </span>
+                <span class="meta-item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+                  幹事 ${event.organizerName}
+                </span>
+                <span class="meta-item meta-count">${event.participantCount!""}</span>
+              </span>
+            </span>
+            <span class="event-row-count">
+              <span class="event-row-count-label">参加</span>
+              <span class="event-row-count-value">${event.participantCount!""}</span>
+            </span>
+            <svg class="event-row-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </a>
+        </li>
+      </#list>
+    </ul>
   </#if>
 </section>
 <#include "_footer.ftl">

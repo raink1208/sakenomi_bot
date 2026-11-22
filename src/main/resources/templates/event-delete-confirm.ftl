@@ -1,6 +1,7 @@
+<#assign nav = "events">
 <#include "_header.ftl">
-<section class="form-card">
-  <h1>⚠️ イベント削除の確認</h1>
+<section class="form-card form-card-danger">
+  <h1>イベントを削除しますか?</h1>
   <p>
     <strong>第${event.number}回 ${event.name}</strong> を削除します。<br>
     チャンネル・ロール・出欠・支払記録がすべて削除されます。この操作は取り消せません。

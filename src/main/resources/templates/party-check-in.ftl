@@ -1,16 +1,22 @@
+<#assign nav = "events">
 <#include "_header.ftl">
 <section class="check-in">
-  <a class="back-link" href="/g/${guildId?c}/events/${event.id?c}#party-${party.id?c}">← 第${event.number}回 ${event.name} に戻る</a>
+  <a class="back-link" href="/g/${guildId?c}/events/${event.id?c}#party-${party.id?c}">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+    第${event.number}回 ${event.name} に戻る
+  </a>
   <div class="page-head">
-    <h1>出席登録</h1>
-    <p class="page-sub">第${event.number}回 ${event.name} · ${event.date}</p>
+    <div>
+      <h1>受付モード(出席登録)</h1>
+      <p class="page-sub">第${event.number}回 ${event.name} · ${event.dateLabel!"開催日未定"}</p>
+    </div>
   </div>
 
-  <div class="tabs check-in-tabs">
+  <nav class="pill-tabs" aria-label="お店">
     <#list parties as p>
-      <a class="tab<#if p.id == party.id> active</#if>" href="/g/${guildId?c}/parties/${p.id?c}/check-in">${p.orderNo}軒目 ${p.shopName}</a>
+      <a class="pill-tab" href="/g/${guildId?c}/parties/${p.id?c}/check-in"<#if p.id == party.id> aria-current="page"</#if>>${p.orderNo}軒目 ${p.shopName}</a>
     </#list>
-  </div>
+  </nav>
 
   <#if saved>
     <p class="success check-in-saved">出席を保存しました。</p>

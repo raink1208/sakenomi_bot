@@ -1,6 +1,7 @@
 package com.github.rain1208.sakenomi.web.routes
 
 import com.github.rain1208.sakenomi.discord.DiscordGateway
+import com.github.rain1208.sakenomi.domain.AttendanceStatus
 import com.github.rain1208.sakenomi.domain.Event
 import com.github.rain1208.sakenomi.domain.EventStatus
 import com.github.rain1208.sakenomi.domain.ServiceException
@@ -63,6 +64,7 @@ fun Route.eventRoutes(
                     mapOf(
                         "session" to ctx.session,
                         "guildId" to ctx.guild.idLong,
+                        "guildName" to ctx.guild.name,
                         "isAdmin" to ctx.isAdmin,
                         "status" to statusParam,
                         "events" to events,
@@ -79,6 +81,7 @@ fun Route.eventRoutes(
                     mapOf(
                         "session" to ctx.session,
                         "guildId" to ctx.guild.idLong,
+                        "guildName" to ctx.guild.name,
                         "mode" to "create",
                         "form" to mapOf("name" to "", "area" to "", "date" to ""),
                         "error" to null,
@@ -108,6 +111,7 @@ fun Route.eventRoutes(
                         mapOf(
                             "session" to ctx.session,
                             "guildId" to ctx.guild.idLong,
+                            "guildName" to ctx.guild.name,
                             "mode" to "create",
                             "form" to mapOf("name" to name, "area" to area, "date" to dateText),
                             "error" to e.message,
@@ -143,6 +147,7 @@ fun Route.eventRoutes(
                         mapOf(
                             "session" to ctx.session,
                             "guildId" to ctx.guild.idLong,
+                            "guildName" to ctx.guild.name,
                             "event" to ViewModels.event(event, participantService.count(event.id).text, names[event.organizerUserId]),
                             "canManage" to canManage,
                             "isAdmin" to ctx.isAdmin,
@@ -158,8 +163,10 @@ fun Route.eventRoutes(
                             "guests" to guests.map { mapOf("id" to it.id, "name" to it.name, "displayName" to it.displayName) },
                             "parties" to payments.map { pp ->
                                 val paymentsByUser = pp.payments.associateBy { it.payerUserId }
+                                val entries = attendances[pp.party.id]?.entries.orEmpty()
                                 ViewModels.party(pp.party, pp.total) + mapOf(
-                                    "attendance" to attendances[pp.party.id]?.entries.orEmpty().map { entry ->
+                                    "presentCount" to entries.count { it.status == AttendanceStatus.PRESENT },
+                                    "attendance" to entries.map { entry ->
                                         ViewModels.attendanceEntry(
                                             entry,
                                             names[entry.userId] ?: entry.userId.toString(),
@@ -243,6 +250,7 @@ fun Route.eventRoutes(
                         mapOf(
                             "session" to ctx.session,
                             "guildId" to ctx.guild.idLong,
+                            "guildName" to ctx.guild.name,
                             "mode" to "edit",
                             "eventId" to event.id,
                             "form" to mapOf(
@@ -281,6 +289,7 @@ fun Route.eventRoutes(
                             mapOf(
                                 "session" to ctx.session,
                                 "guildId" to ctx.guild.idLong,
+                                "guildName" to ctx.guild.name,
                                 "mode" to "edit",
                                 "eventId" to event.id,
                                 "form" to mapOf("name" to name, "area" to area, "date" to dateText),
@@ -340,6 +349,7 @@ fun Route.eventRoutes(
                         mapOf(
                             "session" to ctx.session,
                             "guildId" to ctx.guild.idLong,
+                            "guildName" to ctx.guild.name,
                             "event" to ViewModels.event(event),
                         ),
                     ),

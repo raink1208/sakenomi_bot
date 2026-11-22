@@ -1,3 +1,5 @@
+<#assign nav = "settings">
+<#assign tabbar = true>
 <#include "_header.ftl">
 <section class="form-card">
   <h1>設定</h1>
