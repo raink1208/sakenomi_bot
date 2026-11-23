@@ -11,7 +11,7 @@ import net.dv8tion.jda.api.interactions.commands.build.SubcommandData
 /** スラッシュコマンド定義(§9.1)。グローバル登録 + guild_id 分離(§4) */
 object CommandRegistry {
 
-    fun commands(): List<SlashCommandData> = listOf(settings(), event(), party(), payment(), attendance())
+    fun commands(): List<SlashCommandData> = listOf(settings(), event(), party(), payment(), attendance(), oshi())
 
     private fun settings() = Commands.slash("settings", "Bot の設定を管理します(運営のみ)")
         .setContexts(InteractionContextType.GUILD)
@@ -124,5 +124,21 @@ object CommandRegistry {
                 .addOptions(
                     OptionData(OptionType.INTEGER, "party", "お店の番号(n軒目)", false).setMinValue(1),
                 ),
+        )
+
+    private fun oshi() = Commands.slash("oshi", "推しロールを管理します(運営のみ)")
+        .setContexts(InteractionContextType.GUILD)
+        .addSubcommands(
+            SubcommandData("add", "手動で作成したロールを推しとして登録します")
+                .addOptions(
+                    OptionData(OptionType.ROLE, "role", "付与するロール(事前に作成しておく)", true),
+                    OptionData(OptionType.STRING, "name", "推しの名前(選択肢に表示されます)", true).setRequiredLength(1, 80),
+                ),
+            SubcommandData("remove", "推しの登録を解除します(ロール自体は削除しません)")
+                .addOptions(
+                    OptionData(OptionType.STRING, "name", "登録解除する推しの名前", true).setAutoComplete(true),
+                ),
+            SubcommandData("list", "登録済みの推し一覧を表示します"),
+            SubcommandData("panel", "このチャンネルに推し選択パネルを設置します"),
         )
 }

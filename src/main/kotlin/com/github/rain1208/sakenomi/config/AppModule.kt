@@ -4,14 +4,17 @@ import com.github.rain1208.sakenomi.discord.DiscordGateway
 import com.github.rain1208.sakenomi.discord.button.EventButtonHandler
 import com.github.rain1208.sakenomi.discord.command.AttendanceCommandHandler
 import com.github.rain1208.sakenomi.discord.command.EventCommandHandler
+import com.github.rain1208.sakenomi.discord.command.OshiCommandHandler
 import com.github.rain1208.sakenomi.discord.command.PartyCommandHandler
 import com.github.rain1208.sakenomi.discord.command.PaymentCommandHandler
 import com.github.rain1208.sakenomi.discord.command.SettingsCommandHandler
+import com.github.rain1208.sakenomi.discord.component.OshiComponentHandler
 import com.github.rain1208.sakenomi.discord.listener.InteractionListener
 import com.github.rain1208.sakenomi.repository.AttendanceRepository
 import com.github.rain1208.sakenomi.repository.EventRepository
 import com.github.rain1208.sakenomi.repository.GuestRepository
 import com.github.rain1208.sakenomi.repository.GuildSettingsRepository
+import com.github.rain1208.sakenomi.repository.OshiRepository
 import com.github.rain1208.sakenomi.repository.ParticipantRepository
 import com.github.rain1208.sakenomi.repository.PartyRepository
 import com.github.rain1208.sakenomi.repository.PaymentRepository
@@ -19,6 +22,7 @@ import com.github.rain1208.sakenomi.service.AttendanceService
 import com.github.rain1208.sakenomi.service.AuditLogger
 import com.github.rain1208.sakenomi.service.EventService
 import com.github.rain1208.sakenomi.service.GuestService
+import com.github.rain1208.sakenomi.service.OshiService
 import com.github.rain1208.sakenomi.service.ParticipantService
 import com.github.rain1208.sakenomi.service.PartyService
 import com.github.rain1208.sakenomi.service.PaymentService
@@ -37,6 +41,7 @@ fun appModule(config: AppConfig) = module {
     single { PaymentRepository() }
     single { AttendanceRepository() }
     single { GuestRepository() }
+    single { OshiRepository() }
 
     // Discord Gateway
     single { DiscordGateway() }
@@ -51,6 +56,7 @@ fun appModule(config: AppConfig) = module {
     single { PartyService(get()) }
     single { PaymentService(get(), get(), get(), get()) }
     single { AttendanceService(get(), get(), get()) }
+    single { OshiService(get(), get()) }
 
     // Handler
     single { SettingsCommandHandler(get(), get()) }
@@ -59,7 +65,9 @@ fun appModule(config: AppConfig) = module {
     single { PaymentCommandHandler(get(), get(), get(), get()) }
     single { AttendanceCommandHandler(get(), get(), get(), get(), get()) }
     single { EventButtonHandler(get(), get(), get()) }
+    single { OshiCommandHandler(get(), get()) }
+    single { OshiComponentHandler(get()) }
 
     // Listener
-    single { InteractionListener(get(), get(), get(), get(), get(), get()) }
+    single { InteractionListener(get(), get(), get(), get(), get(), get(), get(), get()) }
 }

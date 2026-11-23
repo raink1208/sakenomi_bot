@@ -92,3 +92,11 @@ object AttendancesTable : Table("attendances") {
 
     override val primaryKey = PrimaryKey(id)
 }
+object OshiRolesTable : Table("oshi_roles") {
+    val id = long("id").autoIncrement()
+    val guildId = long("guild_id")
+    val roleId = long("role_id")
+    val name = varchar("name", 80)
+
+    override val primaryKey = PrimaryKey(id)
+}

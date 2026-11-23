@@ -112,3 +112,10 @@ data class Attendance(
     val recordedBy: Long,
     val recordedAt: OffsetDateTime,
 )
+/** 推しロール。ロールは運営が Discord 上で手動作成し、Bot は名前との紐付けのみを保持する */
+data class Oshi(
+    val id: Long,
+    val guildId: Long,
+    val roleId: Long,
+    val name: String,
+)

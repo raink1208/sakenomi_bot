@@ -172,6 +172,14 @@ class DiscordGateway {
         guild.removeRoleFromMember(member, role).complete()
     }
 
+    /** 複数ロールの付与・剥奪を 1 リクエストで行う(推しロール変更用) */
+    fun modifyRoles(guild: Guild, member: Member, addRoleIds: Collection<Long>, removeRoleIds: Collection<Long>) {
+        val toAdd = addRoleIds.mapNotNull { guild.getRoleById(it) }
+        val toRemove = removeRoleIds.mapNotNull { guild.getRoleById(it) }
+        if (toAdd.isEmpty() && toRemove.isEmpty()) return
+        guild.modifyMemberRoles(member, toAdd, toRemove).complete()
+    }
+
     /** 募集メッセージの参加/参加キャンセルボタンを無効化する */
     fun disableRecruitButton(channel: TextChannel, messageId: Long, eventId: Long) {
         channel.editMessageComponentsById(

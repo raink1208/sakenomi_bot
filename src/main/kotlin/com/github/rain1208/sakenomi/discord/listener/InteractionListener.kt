@@ -3,13 +3,16 @@ package com.github.rain1208.sakenomi.discord.listener
 import com.github.rain1208.sakenomi.discord.button.EventButtonHandler
 import com.github.rain1208.sakenomi.discord.command.AttendanceCommandHandler
 import com.github.rain1208.sakenomi.discord.command.EventCommandHandler
+import com.github.rain1208.sakenomi.discord.command.OshiCommandHandler
 import com.github.rain1208.sakenomi.discord.command.PartyCommandHandler
 import com.github.rain1208.sakenomi.discord.command.PaymentCommandHandler
 import com.github.rain1208.sakenomi.discord.command.SettingsCommandHandler
+import com.github.rain1208.sakenomi.discord.component.OshiComponentHandler
 import com.github.rain1208.sakenomi.domain.ServiceException
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
+import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent
 import net.dv8tion.jda.api.events.session.ReadyEvent
 import net.dv8tion.jda.api.hooks.ListenerAdapter
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback
@@ -22,6 +25,8 @@ class InteractionListener(
     private val paymentHandler: PaymentCommandHandler,
     private val attendanceHandler: AttendanceCommandHandler,
     private val buttonHandler: EventButtonHandler,
+    private val oshiHandler: OshiCommandHandler,
+    private val oshiComponentHandler: OshiComponentHandler,
 ) : ListenerAdapter() {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -42,6 +47,7 @@ class InteractionListener(
                 "party" -> partyHandler.handle(event)
                 "payment" -> paymentHandler.handle(event)
                 "attendance" -> attendanceHandler.handle(event)
+                "oshi" -> oshiHandler.handle(event)
             }
         }
     }
@@ -51,6 +57,7 @@ class InteractionListener(
         try {
             when (event.name) {
                 "event" -> eventHandler.autoComplete(event)
+                "oshi" -> oshiHandler.autoComplete(event)
                 else -> event.replyChoices(emptyList()).queue({}, {})
             }
         } catch (e: Exception) {
@@ -62,9 +69,20 @@ class InteractionListener(
 
     override fun onButtonInteraction(event: ButtonInteractionEvent) {
         if (event.guild == null || event.member == null) return
-        if (!event.componentId.startsWith("event:")) return
+        val prefix = event.componentId.substringBefore(":")
         runCatchingInteraction(event) {
-            buttonHandler.handle(event)
+            when (prefix) {
+                "event" -> buttonHandler.handle(event)
+                "oshi" -> oshiComponentHandler.handleButton(event)
+            }
+        }
+    }
+
+    override fun onStringSelectInteraction(event: StringSelectInteractionEvent) {
+        if (event.guild == null || event.member == null) return
+        if (!event.componentId.startsWith("oshi:")) return
+        runCatchingInteraction(event) {
+            oshiComponentHandler.handleSelect(event)
         }
     }
 
